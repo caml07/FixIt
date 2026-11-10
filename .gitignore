@@ -1,0 +1,13 @@
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+vault/Config/
+*.pem
+*.key
+
+# Local development artifacts
+node_modules/
+dist/
+coverage/
+.DS_Store
