@@ -1,7 +1,0 @@
-G3_TEST_FAILED AssertionError [ERR_ASSERTION]: public logout: 404 null
-
-404 !== 204
-
-    at expectCode (file:///home/caml/Projects/FixIt/spikes/g2/g3-security.mjs:33:10)
-    at file:///home/caml/Projects/FixIt/spikes/g2/g3-security.mjs:96:3
-    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

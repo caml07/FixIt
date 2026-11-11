@@ -1,7 +1,0 @@
-G2_BENCH_FAILED AssertionError [ERR_ASSERTION]: provisional denied expected 401, got 200: {}
-
-200 !== 401
-
-    at ok (file:///home/caml/Projects/FixIt/spikes/g2/bench.mjs:41:10)
-    at file:///home/caml/Projects/FixIt/spikes/g2/bench.mjs:100:3
-    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)

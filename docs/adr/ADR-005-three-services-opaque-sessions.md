@@ -1,7 +1,7 @@
 ---
 type: architecture-decision-record
 status: proposed
-reviewed_on: 2026-11-10
+reviewed_on: 2026-11-11
 decision_id: ADR-005
 ---
 
@@ -9,7 +9,7 @@ decision_id: ADR-005
 
 ## Estado
 
-**PROPOSED / selected for design by the user, NOT accepted by the FixIt team.** No implementacion, despliegue ni benchmark confirmados. La aceptacion requerira revisar [010.G1-Contracts](../010.G1-Contracts.md), G0 y la prueba de capacidad G2.
+**PROPOSED / selected for design by the user, NOT accepted by the FixIt team.** El usuario confirmo el 11 nov que desea **Auth + Tickets + Chat como runtimes independientes** con una **base PostgreSQL compartida en esquemas `auth` y `tickets`**. Esto confirma una direccion de diseño, **no** la aceptación de todo ADR-005 ni el PASS de G1. No existe producto implementado ni despliegue; se dispone solo de evidencia historica del spike G2, no de un benchmark de la aplicacion final.
 
 ## Contexto
 
@@ -28,7 +28,7 @@ Queremos una separacion comprobable para Web Development II, eventos reales y un
 
 ## Direccion seleccionada para el diseno
 
-1. Tres runtimes Express: Auth (Account/Session/Role), Tickets (SupportTicket/Assignment/Timeline/outbox), Chat (Message/Mongo/Socket.io); mismo reverse proxy HTTPS/WSS. Sin accesos cruzados a DB. PostgreSQL puede compartir maquina, con aislamiento logico y cuentas separadas.
+1. Tres runtimes Express: Auth (Account/Session/Role), Tickets (SupportTicket/Assignment/Timeline/outbox), Chat (Message/Mongo/Socket.io); mismo reverse proxy HTTPS/WSS. **Una base PostgreSQL** para Auth y Tickets con esquemas `auth` y `tickets`, cuentas de BD y privilegios separados. Cada servicio accede solo a sus tablas de negocio mediante su propio rol; las FK referencian `auth.users` desde `tickets` sin convertirlas en una API interna ni permitir consultas arbitrarias cruzadas. Chat mantiene MongoDB.
 2. Auth emite sesion opaca de alta entropia en cookie segura y guarda solo hash del token en PG; bcrypt con salt automatico y work factor calibrado. No JWT de browser.
 3. Tickets y Chat validan identidad con Auth por introspeccion interna autenticada. Tickets es el **Policy Decision Point** para acceso al ticket; Chat siempre consulta a Tickets para joins, mensajes, historial y destinatarios. NATS no concede permisos.
 4. Tickets guarda mutacion de dominio, timeline y outbox en la misma transaccion PG. Publica eventos versionados en JetStream; Chat consume at-least-once de forma idempotente y reconcilia con Tickets cuando la secuencia no concuerda.
@@ -36,6 +36,30 @@ Queremos una separacion comprobable para Web Development II, eventos reales y un
 6. Fail-closed al no poder validar sesion o autorizacion; Mongo caido bloquea ACK positivo; JetStream caido no bloquea el commit ya garantizado en PG.
 
 Todos los endpoints, payloads, codigos, politicas de roles y ejemplos de eventos estan **solo propuestos** en [010.G1-Contracts](../010.G1-Contracts.md).
+
+### Decision complementaria de persistencia (seleccionada por usuario, 11 nov)
+
+Se descartan **como direccion inicial** dos bases PostgreSQL totalmente
+independientes para Auth y Tickets. En una misma database es posible definir
+`tickets.reporter_id` y `tickets.assignee_id` con FK a `auth.users(id)`,
+ademas de las FK propias de tickets/timeline. Los esquemas separan namespaces,
+**no** bases de datos ni mecanismos de aislamiento completos: se requieren
+roles SQL de minimo privilegio, `GRANT REFERENCES` acotado cuando aplique,
+`search_path` controlado y migraciones coordinadas. No usar `ON DELETE
+CASCADE` para borrar historiales al eliminar usuarios; preferir
+desactivacion y retencion definida.
+
+**Trade-off aceptado para el diseño:** se gana integridad referencial SQL y
+un modelo 3NF explicable; se sacrifica la independencia de migraciones y
+del despliegue de datos entre Auth/Tickets. El ownership de operaciones
+sigue gobernado por los contratos REST internos, no por el permiso de FK.
+Esto no altera la separacion Chat/Mongo ni NATS JetStream.
+
+**Pendiente para ratificar ADR:** Valeria y Rina revisan límites, privilegios,
+DDL, migraciones y disponibilidad; G1 Contract-First exige
+`docs/openapi.json` y el modelo 3NF/FK/migraciones validados y
+commiteados **antes** de controladores de producto. Ninguno de esos
+artefactos está implementado aún.
 
 ## Consecuencias y restricciones
 
