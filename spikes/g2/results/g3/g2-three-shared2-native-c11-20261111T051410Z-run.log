@@ -1,0 +1,5 @@
+G3_TEST_FAILED AssertionError [ERR_ASSERTION]: SECURITY FAILURE: revoked socket still receives confidential ticket messages
+
+2 !== 1
+
+    at file:///home/caml/Projects/FixIt/spikes/g2/g3-security.mjs:107:10

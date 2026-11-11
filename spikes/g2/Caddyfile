@@ -1,0 +1,26 @@
+{
+  auto_https off
+}
+:80 {
+  handle /api/auth/* {
+    reverse_proxy {$G2_AUTH_HOST}:3000
+  }
+  handle /api/admin/* {
+    reverse_proxy {$G2_AUTH_HOST}:3000
+  }
+  handle /api/tickets* {
+    reverse_proxy {$G2_TICKETS_HOST}:3000
+  }
+  handle /api/chat/* {
+    reverse_proxy {$G2_CHAT_HOST}:3000
+  }
+  handle /socket.io/* {
+    reverse_proxy {$G2_CHAT_HOST}:3000
+  }
+  handle /api/* {
+    respond "unknown spike API route" 404
+  }
+  handle {
+    respond "G2 benchmark proxy" 200
+  }
+}
