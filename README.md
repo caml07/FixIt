@@ -4,6 +4,8 @@ Proyecto academico de **Web Development II (COP 3851)** y **Cloud & Internet Com
 
 > **Empezar en [docs/000.INDEX.md](docs/000.INDEX.md)**. Indice canonico con producto, FR/NFR, arquitectura, Cloud, plan y ADR. La documentacion previa permanece como antecedente historico.
 
+> **Continuidad entre chats (10 nov 2026):** leer [docs/009.HANDOFF.md](docs/009.HANDOFF.md). Incluye el PDF nuevo de Valeria, decisiones recientes y gates pendientes; las propuestas de monolito y dos microservicios son antecedentes, no acuerdos vigentes.
+
 ## Equipo
 
 - [caml07](https://github.com/caml07) — Web II; Cloud (segun lo conversado).
