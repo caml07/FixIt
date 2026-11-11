@@ -30,13 +30,23 @@
 | Observabilidad (12) | Logs, estado/alarma de salud y evidencia |
 | Automation / IaC (13–14) | Configuracion reproducible solo si hay tiempo y rubrica lo requiere |
 
-## Distribucion propuesta, no asignada
+## Cobertura academica (aclarada por el usuario)
+
+| Materia | A quienes beneficia directamente | Responsable de validar requisitos |
+| --- | --- | --- |
+| Web Development II | caml07, avaleria13 y Rinahrrg | Los tres |
+| Cloud & Internet Computing | caml07 y avaleria13 | caml07 y Valeria |
+| Software Engineering II | Principalmente Valeria y Rina | Valeria y Rina; pendiente de confirmacion docente |
+
+La propuesta de Software Engineering II puede reutilizar el dominio FixIt, pero su rubrica no debe alterar el MVP Web II/Cloud sin una decision conjunta. Beneficiarse de una entrega no implica automaticamente asumir tareas sobre cada microservicio.
+
+## Distribucion tecnica propuesta, aun no asignada
 
 - **caml07:** Web II (backend/autorizacion/integracion) y Cloud (red/seguridad).
 - **avaleria13:** Web II (datos/tickets/pruebas) y Cloud (contenedores, persistencia y monitoreo).
-- **Rinahrrg:** Web II (frontend/integracion/operacion de datos); su nota/participacion en Cloud se debe confirmar. Acceso AWS limitado no significa que tenga una entrega academica de Cloud.
+- **Rinahrrg:** Web II (frontend/integracion/operacion de datos) y posible integracion DDD para Software Engineering II. Acceso AWS limitado no significa que tenga una entrega academica de Cloud.
 
-Esta tabla no impone responsabilidades; el equipo debe repartir el trabajo de acuerdo con tiempo y experiencia.
+Estos repartos por componente no estan aceptados; el equipo debe distribuir trabajo de acuerdo con tiempo y experiencia. **No asignar a Rina trabajo academico de Cloud** por defecto.
 
 ## Calendario de referencia
 
