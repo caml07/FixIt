@@ -27,8 +27,17 @@ adjuntos o funcionalidades accesorias. Ver [Product](docs/001.Product.md),
 - **No existe autoregistro**: un Admin aprovisiona las cuentas y entrega una
   contraseña temporal; el primer inicio obliga a cambiarla. Este es el
   comportamiento esperado, consistente con el proceso de creación de cuentas
-  que el usuario conoce de su universidad. **No se ha acreditado que sea una
-  política institucional formal ni se han cerrado entrega/caducidad/bootstrap.**
+  que el usuario conoce de su universidad. **B1 elegida por usuario el
+  11 nov:** el primer Admin proviene de un **seeder de BD inicial e idempotente**
+  sin credencial fija versionada, y tanto su password temporal como las de
+  usuarios nuevos caducan a las **72 h**. Hasta completar cambio obligatorio
+  tienen sesion `PASSWORD_CHANGE_ONLY` sin acceso a Tickets ni Chat;
+  al activar se invalida la sesion provisional y se exige login nuevo.
+  Las passwords personales siguen **NIST SP 800-63B-4**: 15 caracteres
+  minimos sin MFA, aceptar 64+, Unicode, sin composicion obligatoria,
+  blocklist, limitacion de intentos y sin rotacion periodica arbitraria.
+  **No es politica universitaria verificada; 72 h es decision de FixIt.**
+  Falta revisar con equipo entrega segura y algoritmos.
 - Chat pertenece a cada ticket; solo sus participantes autorizados deben
   acceder. **B2 alternativa A elegida por el usuario (11 nov):** las
   operaciones nuevas del agente anterior se rechazan tras la reasignacion,
@@ -44,6 +53,19 @@ adjuntos o funcionalidades accesorias. Ver [Product](docs/001.Product.md),
   separados** (propuesta aceptada expresamente por usuario, 11 nov),
   MongoDB para mensajes en Chat y NATS JetStream para eventos. Sesiones
   **opacas**, hashes bcrypt, autorización interna por servicio.
+  **G1-C alternativa B elegida por usuario el 11 nov:** REST sincrono
+  exclusivamente para decisiones de identidad/permisos y NATS JetStream
+  asincrono para publicar cambios de Tickets mediante outbox; Chat usa
+  Socket.IO para tiempo real y MongoDB para mensajes persistentes.
+  Nunca confiar en NATS para conceder permisos.
+  **Opcion A de recuperacion seleccionada por usuario (11 nov):**
+  [G1](docs/010.G1-Contracts.md) define **confirmar cambios de Tickets
+  cuando PostgreSQL guarda ticket+timeline+outbox**, sin esperar a NATS:
+  reintentos tras caidas, deduplicacion y reparacion de proyecciones.
+  Se acepta **consistencia eventual de notificaciones** para minimizar
+  latencia y acoplamiento del broker; **NO** de permisos, que se verifican
+  sincronamente. Decision de diseño seleccionada, **pendiente de ratificacion
+  del equipo y pruebas**, sin crear un gate nuevo.
   **Tres runtimes se mantienen independientes**; las FK entre esquemas
   aportan integridad, no dan acceso libre a tablas ajenas. Falta ratificacion
   por Valeria/Rina y especificar migraciones/privilegios; ADR-005 **sigue
@@ -51,8 +73,49 @@ adjuntos o funcionalidades accesorias. Ver [Product](docs/001.Product.md),
 - Alternativa conservada: **Core (Auth+Tickets) + Chat**. El monolito modular
   es una opción histórica de respaldo. La comparación de rendimiento NO
   acepta ni rechaza por sí sola [ADR-005](docs/adr/ADR-005-three-services-opaque-sessions.md).
+- **Grilling cerrado por usuario (11 nov):** construir **MVP IT Help Desk
+  funcional y bien terminado**, no todas las funciones del PDF inicial;
+  conservar **Auth + Tickets + Chat** y minimizar complejidad innecesaria.
+  El usuario revisara arquitectura con **Valeria y Rina**. **Las dos
+  validaran por su cuenta Software Engineering II** con su profesor; no
+  bloquear Web II/Cloud por ese curso ni asumir que sus cambios de rubrica
+  se aplican al producto general sin acuerdo de los tres.
+- **Ajuste MVP del PDF original (11 nov):** el usuario quiere
+  **fotografia de evidencia en ticket**, operaciones principales de
+  ticket, **estados auditados** y **notificaciones dentro de la app**.
+  Se propone una foto **opcional** JPG/PNG/WebP max. 5 MB por ticket,
+  almacenada privadamente con permisos por ticket; el detalle se
+  revisara con el equipo. Reporter puede editar ticket propio en
+  OPEN; avisos de creacion, asignacion, estado y mensajes a destinatarios
+  autorizados via JetStream/Socket.IO. **No afecta el token opaco de Auth,
+  no reintroduce IA ni exige S3 para fotos**, sin push ni email en MVP.
 - No ejecutar despliegues de AWS ni modificar el plan de cuenta, costos o
   permisos sin autorización explícita.
+
+**Cloud, confirmacion oral comunicada por usuario el 11 nov:** Marvin
+**acepta una VPC y una EC2** y espera evidencia de **S3**. El **12 nov**
+el usuario planea presentarle la documentacion. Falta saber si la
+evidencia de S3 requerida es **website estatico publico**, **bucket
+privado de artefactos versionados** o ambas; que reemplaza la prueba
+de dos VPC/VM del PDF adicional, y fechas/horas/formatos definitivos.
+No confundir esta confirmacion con autorizacion AWS de gasto o deploy.
+Ver [004.Cloud](docs/004.Cloud.md) y la
+[auditoria conjunta de gates](docs/011.Gates.md).
+
+**Presentacion unificada (11 nov):** [014.Resumen-Ejecutivo](docs/014.Resumen-Ejecutivo.md)
+resume el MVP, el diagrama y las decisiones, mas la agenda para Marvin y
+Felix el **12 nov**, y para Valeria/Rina cuando se reunan. Distingue
+lo confirmado, las propuestas y los hitos no verificados. Es la referencia
+corta para docentes, sin reemplazar los requisitos y gates canonicos.
+
+**Alerta de hashing antes de G4:** se eligio bcrypt para estudiar y
+experimentar, pero su limite habitual de **72 bytes** puede truncar
+passwords largas Unicode. NIST exige verificar la password completa y
+admitir al menos 64 caracteres. No marcar la implementacion como
+compatible hasta decidir una tecnica de hashing sin truncamiento
+(Argon2id o una alternativa bcrypt debidamente auditada). Ver
+[G1](docs/010.G1-Contracts.md) y
+[NIST 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html).
 
 ## Actualización académica obligatoria — Mr. Felix, COP3851 (11 nov)
 
@@ -63,8 +126,12 @@ están en [docs/references/COP3851_Capstone_2026-11-11.md](docs/references/COP38
 - **Antes de que agentes de IA creen nuevos controladores:** generar
   `docs/openapi.json`, modelo relacional **3NF con FK explícitas** y
   migraciones; **commitearlos previamente** (no solo escribirlos en Markdown).
-  Aún **NO existen** esos archivos definitivos ni ese commit. El spike de G2
-  es histórico y no cuenta como cumplimiento contractual del capstone.
+  **Aun no hay archivos OpenAPI, SQL, migraciones ni controllers del producto.**
+  El usuario pidio conservar solamente el diseño y los diagramas de G1
+  en [docs/010.G1-Contracts.md](docs/010.G1-Contracts.md); se retiraron
+  borradores tecnicos prematuros. Los contratos formales y su commit vendran
+  cuando el equipo acuerde comenzar G4. El spike de G2 es historico y no
+  cuenta como cumplimiento contractual del capstone.
 - **`CONTEXT.md` es nuestra unica constitucion canonica** para agentes,
   arquitectura y continuidad del equipo; no crear otra con contenido
   duplicado. **Advertencia de rubrica:** el PDF exige literalmente un archivo
@@ -174,7 +241,7 @@ en el host final, seguridad exhaustiva, pruebas prolongadas ni AWS real.
 | Gate | Estado honesto | ¿Qué impide PASS? |
 | --- | --- | --- |
 | G0 · Alcance/academia | **PARCIAL; nueva rubrica COP3851 recibida** | Confirmar `tenant_id`/ownership literal, comunidad IT Help Desk, entregas docentes |
-| G1 · Diseño | **3 servicios + PG compartido elegidos por usuario; NO PASS** | Ratificacion equipo, **commit previo** OpenAPI + 3NF/FK/migraciones, roles SQL, contratos y ADR-005 |
+| G1 · Diseño | **PAQUETE DOCUMENTAL LISTO PARA REVISION DE EQUIPO; NO PASS** | Tres servicios/PG, B1, B2, G1-C y consistencia eventual seleccionadas por usuario; ratificacion Valeria/Rina; **commit previo** OpenAPI + 3NF/FK/migraciones cuando empiece implementacion |
 | G2 · Capacidad/Cloud | **EVIDENCIA PARCIAL; APLAZADO** | Carga prolongada, EC2/T3, costos, backup/restore y producto real |
 | G3 · Seguridad/consistencia | **B2 A SELECCIONADA POR USUARIO; RED TEAM PENDIENTE** | CSRF/Origin/Strict, eventos, carreras, BOLA/SQL/NoSQL/CORS/rate-limit y tests del producto |
 | G4 · Implementación | **GOBERNANZA CREADA; CODIGO REAL NO INICIADO** | OpenAPI/schema commiteados primero, tests, RFC dependencias, defensa en vivo y MVP real |
@@ -186,17 +253,17 @@ no confundir `PASS_SPIKE` con `PASS` del proyecto.
 
 ## Por dónde retomar al continuar
 
-1. Leer [011.Gates](docs/011.Gates.md) y
-   [012.G3-Security-Consistency](docs/012.G3-Security-Consistency.md).
-2. **Seguir primero nuestros gates:** continuar la revisión **G3** de
-   CSRF/Origin, permisos, carrera envío/reasignación y reentrega de eventos.
-   Las pruebas deben rediseñarse sobre el producto cuando exista.
-3. Para iniciar el código de **G4**, cerrar **G1 Contract-First**: validar
+1. Leer el **[paquete unico de revision G0–G5](docs/011.Gates.md)** y
+   [G1-Contracts](docs/010.G1-Contracts.md). La revision con Valeria/Rina
+   queda pendiente para cuando el equipo pueda reunirse, no implica PASS.
+2. **Sin codigo aun:** resolver dudas academicas de G0 con profesores y
+   presentar G1 al equipo **en bloque**; no abrir mas microgates de diseno.
+   Las pruebas G2/G3 se haran sobre el producto cuando exista.
+3. **Solo tras autorizacion de implementar G4**, validar
    `docs/openapi.json` y esquema **3NF/FK/migraciones** y commitearlos
-   **antes** de que agentes generen controllers. Siguiente review conjunto:
-   [estrategia de una DB PostgreSQL con schemas separados frente a bases
-   independientes](docs/011.Gates.md), sin cambiar ADR-005 unilateralmente.
-   No es un nuevo gate.
+   **antes** de que agentes generen controllers. Conservar la DB PostgreSQL
+   compartida con schemas `auth`/`tickets` como direccion elegida, sin
+   declarar aceptado el ADR por parte de todo el equipo.
 4. Preparar **G4** con código real y nuevos tests, reutilizando las lecciones
    del [historial consolidado](docs/013.Spike-Results.md) **sin copiar
    mecanismos experimentales inseguros**.
