@@ -1,7 +1,7 @@
 # Comparacion de alcances: documento compartido vs. IT Help Desk
 
 **Estado:** comparacion para debate; no sustituye la especificacion original.
-**Documento conservado:** [FixIt_Project_Specification.pdf](references/FixIt_Project_Specification.pdf), 21 paginas; su portada identifica a **Yaderling Garcia** como estudiante. El documento fue **compartido por Valeria**, lo que no demuestra que Valeria sea su autora.
+**Documento conservado:** [FixIt_Project_Specification.pdf](references/FixIt_Project_Specification.pdf), 21 paginas. **Autora real: Valeria**, segun aclaracion expresa del usuario (13 nov 2026). El PDF fue elaborado usando **la cuenta de Yaderlin/Yaderling**; por ello, su portada identifica a **Yaderling Garcia**, pero **ese nombre no debe atribuirse como autora del contenido**. Se conserva el PDF original sin alterar su portada, dejando corregida aqui su procedencia.
 
 ## Por que vale la pena conservar el documento original
 

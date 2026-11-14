@@ -102,11 +102,33 @@ No confundir esta confirmacion con autorizacion AWS de gasto o deploy.
 Ver [004.Cloud](docs/004.Cloud.md) y la
 [auditoria conjunta de gates](docs/011.Gates.md).
 
+**Actualizacion Cloud (12 nov):** usuario informa que **Marvin dio luz
+verde para continuar con la arquitectura Cloud de FixIt**. Direccion
+academica de **una VPC + una EC2** ya no esta en debate; esto **no**
+autoriza por si solo crear EC2, buckets, IAM ni asumir cargos.
+El [paquete intermedio de AWS, seccion 8](docs/004.Cloud.md) resume
+defaults propuestos para review del equipo: Compose en una EC2, proxy
+HTTPS unico, SSM y rol IAM, PostgreSQL/Mongo/JetStream sobre EBS duradero,
+S3 privado para releases salvo rubrica distinta, despliegue manual por SHA,
+backup/restore, pruebas y observabilidad. **Pendientes que si importan:**
+website vs versioning S3, demo publica/dominio TLS y presupuesto/capacidad.
+No crear nuevos gates ni cambiar el scope de los tres servicios.
+
 **Presentacion unificada (11 nov):** [014.Resumen-Ejecutivo](docs/014.Resumen-Ejecutivo.md)
 resume el MVP, el diagrama y las decisiones, mas la agenda para Marvin y
 Felix el **12 nov**, y para Valeria/Rina cuando se reunan. Distingue
 lo confirmado, las propuestas y los hitos no verificados. Es la referencia
 corta para docentes, sin reemplazar los requisitos y gates canonicos.
+
+**ORM recomendados para review (12 nov; NO implementados):**
+Prisma ORM para la unica PostgreSQL con esquemas `auth` y `tickets`,
+**un unico owner/historial de migraciones** por FK entre esquemas,
+clientes y cuentas SQL de runtime separados; **Mongoose** para
+MongoDB de Chat (`messages`, dedupe/inbox). El ER conceptual
+de [G1](docs/010.G1-Contracts.md) ahora incluye
+`tickets.ticket_attachments` para metadata de foto privada. Son
+**candidatos**, no se ha seleccionado version ni creado codigo,
+Prisma schema o migraciones. Ver decision [A-16](docs/006.Decisions.md).
 
 **Alerta de hashing antes de G4:** se eligio bcrypt para estudiar y
 experimentar, pero su limite habitual de **72 bytes** puede truncar
