@@ -9,9 +9,11 @@
     "db:migrate": "prisma migrate deploy",
     "auth:dev": "tsx watch services/auth/src/server.ts",
     "auth:start": "tsx services/auth/src/server.ts",
-    "test:auth": "node --import tsx --test services/auth/test/*.test.ts",
+    "test:auth": "node --import tsx --test services/auth/test/*.test.mjs",
     "typecheck": "tsc --noEmit",
-    "audit:high": "npm audit --audit-level=high"
+    "audit:high": "npm audit --audit-level=high",
+    "auth:bootstrap": "tsx services/auth/src/admin-cli.ts bootstrap",
+    "auth:reset-admin": "tsx services/auth/src/admin-cli.ts reset-admin"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
