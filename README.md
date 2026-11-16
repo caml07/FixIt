@@ -2,7 +2,7 @@
 
 **MVP académico single-tenant para Keiser University LAC.** Tres roles (Reporter, Support Agent, Admin), tickets IT, toma atómica, chat y notificaciones dentro del ticket. No es un servicio oficial de la universidad ni usa identidades institucionales reales.
 
-**Estado (16 nov):** el primer servicio **Auth** tiene backend Express/Prisma y pruebas de integración con PostgreSQL 17; **Tickets, Chat, React y AWS siguen pendientes**. El proyecto completo no está desplegado. Contratos de los tres servicios bajo revisión del equipo.
+**Estado (16 nov):** `dev` contiene **documentación, OpenAPI y contratos de base de datos**, sin aplicación ejecutable. El prototipo de Auth y sus pruebas se conservaron por separado en la rama `prototype/auth-g4` (no es el MVP integrado). Tickets/Chat/React y AWS siguen pendientes; los contratos requieren revisión del equipo.
 
 ## Leer solamente lo necesario
 
@@ -19,28 +19,9 @@
 
 No hacer commits, push, merge ni crear recursos AWS sin autorización expresa. Preparar el MVP y probarlo localmente antes de desplegar.
 
-## Auth Service — ejecución local (primera fase, sin Cloud)
+## Implementación de referencia (fuera de `dev`)
 
-Prerequisitos: Node.js 26, PostgreSQL 17, npm y un proxy HTTPS para uso desde navegador. Auth existe en `services/auth/`; **Tickets, Chat y React aún no están implementados**.
-
-```sh
-npm ci
-npm run db:generate
-# Configurar DATABASE_URL exclusivamente para el rol operador de migraciones
-npm run db:migrate
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f ops/postgres/runtime-roles.sql
-# Crear por separado un LOGIN por servicio y conceder solo su rol NOLOGIN correspondiente.
-cp .env.example .env
-# Sustituir los placeholders de .env por URLs y secretos aleatorios distintos; .env está ignorado en Git.
-npm run auth:bootstrap -- admin@example.invalid # Ejecutar SOLO en TTY privada; imprime la temporal una vez
-npm run auth:start
-```
-
-El servicio requiere `AUTH_DATABASE_URL` con acceso limitado a `auth.*`, `AUTH_CSRF_KEY`, `AUTH_TICKETS_SERVICE_TOKEN`, `AUTH_CHAT_SERVICE_TOKEN` (todos secretos diferentes), `AUTH_PUBLIC_ORIGIN` y `AUTH_PORT`/`AUTH_BIND_HOST`. `DATABASE_URL` es solo para Prisma Migrate; **no ejecutar Auth como superuser**. La recuperación del Admin inicial es `npm run auth:reset-admin` únicamente en TTY privada; invalida todas las sesiones anteriores.
-
-Las mutaciones por cookie comprueban `Origin` exactamente igual a `AUTH_PUBLIC_ORIGIN` y `X-CSRF-Token` obtenido de `GET /api/v1/auth/csrf`; login exige Origin pero no token previo. Cookies `__Host-fixit_session` llevan `HttpOnly; Secure; SameSite=Strict`. Para browser local se necesita **HTTPS**, no asumir que cookies Secure funcionarán en cualquier HTTP. El endpoint `/internal/v1/sessions/introspect` debe permanecer **fuera del proxy público**; usa credenciales distintas de Tickets/Chat.
-
-Pruebas desde una **base PostgreSQL efímera y aislada**, nunca desde una DB real con usuarios: migrar con `DATABASE_URL`, aprovisionar el rol runtime, después ejecutar `FIXIT_TEST_DB_URL=postgresql://<runtime-test>@<host>:<port>/<db> npm run test:auth`. Se verificó en PostgreSQL 17 con Podman, rol SQL sin lectura de Tickets, `npm run typecheck` y `npm audit --audit-level=high` (cero hallazgos al 16 nov). El CLI de Admin se probó sin capturar el secreto. Falta defensa Red Team completa, Swagger UI, Compose y los otros servicios.
+La rama `prototype/auth-g4` conserva el servicio Auth con Express/Prisma, la CLI de bootstrap, scripts SQL para roles y sus pruebas PostgreSQL. **No se ejecuta desde esta rama documental** y no equivale al MVP. Continuar el trabajo de código desde una rama específica cuando los contratos G1 estén revisados.
 
 ## Equipo y fuentes originales
 

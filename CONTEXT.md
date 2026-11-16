@@ -174,7 +174,7 @@ están en [docs/references/COP3851_Capstone_2026-11-11.md](docs/references/COP38
   migraciones; **commitearlos previamente** (no solo escribirlos en Markdown).
   **Desde el 15 nov existen borradores commiteados** [OpenAPI](docs/openapi.json),
   [Prisma y migracion SQL](docs/database/README.md), autorizados por el usuario
-  solo como documentacion. **Contratos y migracion versionados antes del codigo Auth: Prisma 7.10.1 aplico la migracion, diff representable vacio, Redocly OAS valido (5 warnings). Auth Express ya existe y paso pruebas reales de sesiones/CSRF/Admin con PostgreSQL 17 y roles SQL restringidos; Tickets/Chat/UI no existen. Falta ratificacion del equipo y Red Team completo.** El spike de G2 es historico y no
+  solo como documentacion. **En `dev` solo quedan contratos y documentación: OpenAPI se validó con Redocly (5 warnings); Prisma 7.10.1 aplicó la migración y dio diff representable vacío en PostgreSQL 17 temporal. El prototipo Auth Express y las pruebas con SQL restringido se conservan en `prototype/auth-g4`, no en `dev`. Tickets/Chat/UI no están implementados. Falta ratificación del equipo y Red Team completo.** El spike de G2 es historico y no
   cuenta como cumplimiento Contract-First.
 - **`CONTEXT.md` es nuestra unica constitucion canonica** para agentes,
   arquitectura y continuidad del equipo; no crear otra con contenido
@@ -282,7 +282,7 @@ en el host final, seguridad exhaustiva, pruebas prolongadas ni AWS real.
 | G1 · Diseño | **DIVISION DE SERVICIOS RESPALDADA; NO PASS** | Ratificar contratos/datos, validar borradores OpenAPI/Prisma/SQL y **commitear antes de controladores** tras permiso |
 | G2 · Capacidad/Cloud | **EVIDENCIA PARCIAL; APLAZADO** | Carga prolongada, EC2/T3, costos, backup/restore y producto real |
 | G3 · Seguridad/consistencia | **B2 A SELECCIONADA POR USUARIO; RED TEAM PENDIENTE** | CSRF/Origin/Strict, eventos, carreras, BOLA/SQL/NoSQL/CORS/rate-limit y tests del producto |
-| G4 · Implementación | **AUTH SERVICE EN DESARROLLO; TESTS LOCALES PASS** | Tickets/Chat/UI, Red Team, Compose/Cloud y defensa en vivo pendientes; G4 no PASS |
+| G4 · Implementación | **SIN CODIGO DE APLICACION EN `dev`** | Prototipo Auth separado; implementar Tickets/Chat/UI, Red Team, Compose/Cloud y defensa en vivo. G4 no PASS |
 | G5 · Cloud/entrega | **NO DESPLEGADO** | Presupuesto y autorización, AWS, observabilidad, rollback/restore |
 
 **Ningún gate G0–G5 está completamente aprobado.** Lo que se ha
