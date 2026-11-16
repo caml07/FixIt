@@ -1345,6 +1345,23 @@
                 },
                 "required": [
                   "expectedVersion"
+                ],
+                "anyOf": [
+                  {
+                    "required": [
+                      "title"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "description"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "category"
+                    ]
+                  }
                 ]
               }
             }
@@ -1448,7 +1465,8 @@
         },
         "x-roles": [
           "REPORTER"
-        ]
+        ],
+        "description": "Reporter propietario solo edita OPEN; expectedVersion obligatorio. Debe proveer por lo menos un campo editable distinto de expectedVersion. Cada edicion valida ownership/version y escribe timeline en la misma transaccion. Nunca permite modificar reporter, agente, estado ni version directamente."
       }
     },
     "/api/v1/tickets/{ticketId}/claim": {
@@ -1577,7 +1595,8 @@
         },
         "x-roles": [
           "SUPPORT_AGENT"
-        ]
+        ],
+        "description": "Solo SUPPORT_AGENT con sesion FULL: UPDATE condicional donde status=OPEN y assignee_id IS NULL, incremento de version y timeline+outbox atomicos. Un solo ganador; los competidores reciben 409 y no generan evento ni registro de exito. No requiere expectedVersion del cliente para claim."
       }
     },
     "/api/v1/tickets/{ticketId}/status": {
@@ -1731,7 +1750,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Aplicar exclusivamente transiciones del RBAC documentado: agente actual ASSIGNED->IN_PROGRESS->RESOLVED; reporter propietario RESOLVED->CLOSED u OPEN->CANCELLED; Admin excepcion justificada con reason no vacio. expectedVersion obligatorio. CLOSED/CANCELLED terminales. Cada cambio genera timeline+outbox transaccional; fallo de Auth o PG rechaza operacion."
       }
     },
     "/api/v1/tickets/{ticketId}/assignee": {
@@ -1891,7 +1911,8 @@
         },
         "x-roles": [
           "ADMIN"
-        ]
+        ],
+        "description": "Solo Admin FULL, con motivo y expectedVersion; reasigna tickets ASSIGNED/IN_PROGRESS. Tickets debe consultar GET /internal/v1/users/{userId}/agent-eligibility con credencial propia ANTES del cambio. Si no es elegible: 409 sin mutacion. Auth no disponible: 503 fail-closed. CAS de version y escritura transaccional de ticket+timeline+outbox. Revalidar por comando; elegibilidad no es garantia atomica entre servicios y se ensayan carreras de desactivacion en G3."
       }
     },
     "/api/v1/tickets/{ticketId}/events": {
@@ -3121,6 +3142,256 @@
           "ADMIN"
         ],
         "description": "Solo administradores con sesion FULL; la cuenta objetivo debe tener rol REPORTER o SUPPORT_AGENT. Nunca modificar la cuenta ADMIN bootstrap. Audit y revocacion atomicos."
+      }
+    },
+    "/internal/v1/users/{userId}/agent-eligibility": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Verificar si el destinatario de una reasignacion es un agente activo",
+        "description": "Solo Tickets, mediante bearer interno propio. Devuelve eligible=false tanto si el usuario no existe como si no es SUPPORT_AGENT ACTIVE; no revela email, password ni otros atributos. No almacenar o cachear la respuesta. Inaccesible desde proxy publico.",
+        "operationId": "get__internal_v1_users__userId__agent_eligibility",
+        "security": [
+          {
+            "serviceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID del usuario candidato, no del solicitante"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Elegibilidad actual de un agente; no bloquea cambios futuros de estado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "eligible": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "eligible"
+                      ]
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial de servicio invalida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Otro servicio o permiso insuficiente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Auth temporalmente no disponible; no continuar la reasignacion",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-internal": true
+      }
+    },
+    "/internal/v1/tickets/chat-snapshot": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Reconstruir proyeccion de Chat desde el estado actual de Tickets",
+        "description": "Solo Chat por bearer interno, nunca expuesto por proxy. Escanear tickets por ID estable ascendente (no por fecha de creacion) con cursor y limite max 100. Solo devolver IDs, version, estado y audiencia; no mensajes, titulo, descripcion ni fotos. Stream/consumidor durable de JetStream listo antes del escaneo para retener nuevos eventos; aplicar versiones monotonicas y conciliar cambios posteriores sin prometer snapshot global atomico. Uso en recuperacion si la retencion borro eventos ya marcados publicados.",
+        "operationId": "get__internal_v1_tickets_chat_snapshot",
+        "security": [
+          {
+            "serviceBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Ultimo ticketId procesado; continuar exclusivamente mayor que el cursor"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado autoritativo paginado, sin datos privados innecesarios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "ticketId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "reporterId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "assigneeId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "status": {
+                                "$ref": "#/components/schemas/TicketStatus"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": 1
+                              }
+                            },
+                            "required": [
+                              "ticketId",
+                              "reporterId",
+                              "assigneeId",
+                              "status",
+                              "version"
+                            ]
+                          }
+                        },
+                        "page": {
+                          "$ref": "#/components/schemas/CursorPage"
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "page"
+                      ]
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin credencial Chat valida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Otro servicio no autorizado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Cursor/limite invalido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tickets o base de datos indisponibles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-internal": true
       }
     }
   },
