@@ -174,11 +174,11 @@ están en [docs/references/COP3851_Capstone_2026-11-11.md](docs/references/COP38
   migraciones; **commitearlos previamente** (no solo escribirlos en Markdown).
   **Desde el 15 nov existen borradores commiteados** [OpenAPI](docs/openapi.json),
   [Prisma y migracion SQL](docs/database/README.md), autorizados por el usuario
-  solo como documentacion. **Se guardaron como draft en Git, no estan aprobados: el SQL paso un smoke test limitado en PostgreSQL 17, Redocly OAS y Prisma CLI 7.3.0 validaron sintaxis; faltan comparar Prisma vs SQL, permisos DB, concurrencia y ratificacion del equipo. No existen controladores del producto.** El spike de G2 es historico y no
+  solo como documentacion. **Contratos y migracion versionados antes del codigo Auth: Prisma 7.10.1 aplico la migracion, diff representable vacio, Redocly OAS valido (5 warnings). Auth Express ya existe y paso pruebas reales de sesiones/CSRF/Admin con PostgreSQL 17 y roles SQL restringidos; Tickets/Chat/UI no existen. Falta ratificacion del equipo y Red Team completo.** El spike de G2 es historico y no
   cuenta como cumplimiento Contract-First.
 - **`CONTEXT.md` es nuestra unica constitucion canonica** para agentes,
   arquitectura y continuidad del equipo; no crear otra con contenido
-  duplicado. **Puente `CLAUDE.md` creado el 15 nov:** archivo minimo en raiz enlazado a este CONTEXT canonico, con reglas Contract-First y seguridad exigidas por COP3851. Falta commit y confirmacion docente de suficiencia; no duplicar toda la constitucion.
+  duplicado. **Puente `CLAUDE.md` versionado desde el 15 nov:** archivo minimo en raiz enlazado a este CONTEXT canonico, con reglas Contract-First y seguridad exigidas por COP3851. Falta confirmacion docente de suficiencia; no duplicar toda la constitucion.
 - Rubrica: **25%** OpenAPI/3NF/migraciones, **20%** arquitectura/middleware,
   **25%** seguridad y AI Red Team, **20%** solución funcional, **10%** defensa
   en vivo/extension de middleware.
@@ -282,7 +282,7 @@ en el host final, seguridad exhaustiva, pruebas prolongadas ni AWS real.
 | G1 · Diseño | **DIVISION DE SERVICIOS RESPALDADA; NO PASS** | Ratificar contratos/datos, validar borradores OpenAPI/Prisma/SQL y **commitear antes de controladores** tras permiso |
 | G2 · Capacidad/Cloud | **EVIDENCIA PARCIAL; APLAZADO** | Carga prolongada, EC2/T3, costos, backup/restore y producto real |
 | G3 · Seguridad/consistencia | **B2 A SELECCIONADA POR USUARIO; RED TEAM PENDIENTE** | CSRF/Origin/Strict, eventos, carreras, BOLA/SQL/NoSQL/CORS/rate-limit y tests del producto |
-| G4 · Implementación | **GOBERNANZA CREADA; CODIGO REAL NO INICIADO** | OpenAPI/schema commiteados primero, tests, RFC dependencias, defensa en vivo y MVP real |
+| G4 · Implementación | **AUTH SERVICE EN DESARROLLO; TESTS LOCALES PASS** | Tickets/Chat/UI, Red Team, Compose/Cloud y defensa en vivo pendientes; G4 no PASS |
 | G5 · Cloud/entrega | **NO DESPLEGADO** | Presupuesto y autorización, AWS, observabilidad, rollback/restore |
 
 **Ningún gate G0–G5 está completamente aprobado.** Lo que se ha

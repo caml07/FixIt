@@ -1,6 +1,6 @@
 # Esquema 3NF y migracion inicial — Contract-First
 
-**Estado (16 nov 2026):** OpenAPI 3.1.1 validada con Redocly (5 warnings no bloqueantes). Versiones `prisma`, `@prisma/client` y `@prisma/adapter-pg` fijadas en **7.10.1**. El esquema pasa `prisma validate` y la migracion manual **pasa Prisma Migrate deploy** contra PostgreSQL 17 efimero. `prisma migrate diff --from-config-datasource --to-schema docs/database/schema.prisma --script --exit-code` produce una migracion vacia. Prisma no inspecciona todos los `CHECK`/indices especiales; preservarlos por SQL. **No existe servicio real de producto ni ratificacion tecnica del equipo. G1 NO PASS.**
+**Estado (16 nov 2026):** OpenAPI 3.1.1 validada con Redocly (5 warnings no bloqueantes). Versiones `prisma`, `@prisma/client` y `@prisma/adapter-pg` fijadas en **7.10.1**. El esquema pasa `prisma validate` y la migracion manual **pasa Prisma Migrate deploy** contra PostgreSQL 17 efimero. `prisma migrate diff --from-config-datasource --to-schema docs/database/schema.prisma --script --exit-code` produce una migracion vacia. Prisma no inspecciona todos los `CHECK`/indices especiales; preservarlos por SQL. **Auth Service implementado parcialmente y probado con usuario SQL restringido; Tickets/Chat/React no.** Falta ratificacion tecnica del equipo. G1 NO PASS.
 
 ## Archivos y autoridad
 
