@@ -199,6 +199,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Origen no permitido (proteccion contra login CSRF)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -468,6 +478,16 @@
           },
           "503": {
             "description": "Dependencia indispensable indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cuenta o password temporal cambiaron durante la activacion",
             "content": {
               "application/json": {
                 "schema": {
@@ -2484,6 +2504,16 @@
           },
           "503": {
             "description": "Dependencia indispensable indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Formato de token de sesion invalido",
             "content": {
               "application/json": {
                 "schema": {
