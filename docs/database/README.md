@@ -1,10 +1,10 @@
 # Esquema 3NF y primera migracion (borrador)
 
-**Estado:** Contract-First documental, 15 nov 2026. La migracion se probo en una **PostgreSQL 17 temporal, aislada y sin red**; no hay base persistente ni despliegue. No autoriza commit ni generacion de controladores.
+**Estado:** Contract-First documental, 15 nov 2026. OpenAPI, Prisma y SQL tienen **commit inicial de borradores**. Comprobaciones locales posteriores: `npx prisma@7.3.0 validate --schema docs/database/schema.prisma` **PASS**; Redocly validó OpenAPI con 5 advertencias no bloqueantes; la migración SQL **PASS en PostgreSQL 17 efímero, sin red, tmpfs** (8 tablas, 12 FK, 5 categorías). **No prueba equivalencia Prisma/SQL, roles de DB, carreras ni revisión del equipo**; todavía no generar controllers.
 
 ## Archivos y autoridad
 
-- [schema.prisma](schema.prisma): modelo propuesto de Prisma ORM v7 para una **sola** PostgreSQL con esquemas `auth` y `tickets`. No hay dependencias de Prisma instaladas en este repositorio ni version fijada en un lockfile.
+- [schema.prisma](schema.prisma): modelo propuesto de Prisma ORM v7 para una **sola** PostgreSQL con esquemas `auth` y `tickets`. Validado con Prisma CLI 7.3.0 **vía `npx` temporal**, no instalado como dependencia del repositorio ni fijado en lockfile.
 - [migrations/0001_initial.sql](migrations/0001_initial.sql): **migracion SQL inicial redactada manualmente**, con 3NF, FK, CHECK, indices, unicidad, catalogo inicial de cinco categorias y `BEGIN/COMMIT`. La aplicacion en PostgreSQL 17 temporal paso, **pero NO fue generada ni validada con Prisma Migrate**. Antes del primer commit de implementacion, elegir version estable de Prisma, generar/comparar el SQL y corregir drift. Una sola cadena de migraciones es la fuente operativa, no dos migradores por microservicio.
 - [../openapi.json](../openapi.json): contrato REST publico e interno propuesto. Las rutas `/internal/v1` estan marcadas con `x-internal` y **no** deben aparecer en el reverse proxy publico. El contrato de Socket.IO sigue en [../010.G1-Contracts.md](../010.G1-Contracts.md).
 
@@ -37,12 +37,12 @@ Las restricciones `CHECK`, el indice `lower(email)` y el indice parcial de cola 
 
 ## Verificacion y secuencia
 
-**Evidencia observada el 15 nov 2026 (local):** se utilizo la imagen ya instalada `postgres:17-alpine` mediante `podman run --rm --network none`, con almacenamiento `tmpfs`. Se aplico `0001_initial.sql` usando `psql -v ON_ERROR_STOP=1`: **PASS**, 8 tablas, 12 FK y 5 categorias semilla. Dentro de una transaccion desechable se comprobo insert de usuario/ticket/timeline/outbox, rechazo de email duplicado ignorando mayusculas, rechazo de FK a reporter inexistente, primera actualizacion de claim con 1 fila y reintento posterior con 0 filas. El test termino en `ROLLBACK` y el contenedor se elimino al finalizar. **No fue una prueba de claim simultaneo ni de seguridad de roles DB, ni se ejecuto Prisma CLI o un validador OAS formal.**
+**Evidencia observada el 15 nov 2026 (local):** se utilizo `postgres:17-alpine` mediante `podman run --rm --network none`, con almacenamiento `tmpfs`. Se aplico `0001_initial.sql` usando `psql -v ON_ERROR_STOP=1`: **PASS**, 8 tablas, 12 FK y 5 categorias semilla (repetido tras los commits). Dentro de una transaccion desechable se comprobo insert de usuario/ticket/timeline/outbox, rechazo de email duplicado ignorando mayusculas, rechazo de FK a reporter inexistente, primera actualizacion de claim con 1 fila y reintento posterior con 0 filas. El test termino en `ROLLBACK` y el contenedor se elimino al finalizar. **No fue una prueba de claim simultaneo ni de seguridad de roles DB, ni se ejecuto Prisma CLI o un validador OAS formal.**
 
 1. Revisar modelo con Valeria y Rina, especialmente FK cruzadas, estados, excepciones y minimizacion de datos.
-2. Fijar version de Prisma/cliente PostgreSQL. Generar migracion reproducible y contrastar con este borrador, incluida la conservacion de `CHECK` e indices SQL.
+2. Fijar version de Prisma/cliente PostgreSQL. **Prisma CLI 7.3.0 ya valida la sintaxis**, pero falta generar/comparar su migracion con el SQL artesanal y conservar `CHECK` e indices SQL.
 3. Completar la validacion de PostgreSQL: dos claims realmente **concurrentes**, restricciones de estado, migracion inversa/rollback de version y roles runtime sin permisos de lectura cruzados. El smoke test inicial anterior no cubre estos casos.
 4. Validar [OpenAPI](../openapi.json) (referencias, esquema, tipos de respuesta, seguridad y roles). Si se modifica una ruta, corregir contrato **antes** de implementar el endpoint.
-5. **Con autorizacion posterior del usuario:** commit del contrato y migraciones validados. Solo en otro commit posterior se generan controladores, como exige COP3851.
+5. Tras validaciones formales y revision de equipo, documentar los resultados y realizar **un nuevo commit correctivo del contrato/esquema** (con autorizacion del usuario), **anterior a generar controllers**. El commit de draft por si solo no acredita esos pasos.
 
 **Fuentes:** [rubrica COP3851](../references/COP3851_Capstone_2026-11-11.md), [G1](../010.G1-Contracts.md), [Prisma v7 multi-schema](https://www.prisma.io/docs/orm/v7/prisma-schema/data-model/multi-schema), [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
