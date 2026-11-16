@@ -1,54 +1,28 @@
 # FixIt — IT Help Desk
 
-Proyecto academico de **Web Development II (COP 3851)** y **Cloud & Internet Computing (CEN 4086)**. **El equipo aprobo el alcance IT Help Desk**; las decisiones tecnicas siguen propuestas. No hay aplicacion ni infraestructura AWS desplegada.
+**MVP académico single-tenant para Keiser University LAC.** Tres roles (Reporter, Support Agent, Admin), tickets IT, toma atómica, chat y notificaciones dentro del ticket. No es un servicio oficial de la universidad ni usa identidades institucionales reales.
 
-> **Empezar en [docs/000.INDEX.md](docs/000.INDEX.md)**. Indice canonico con producto, FR/NFR, arquitectura, Cloud, plan y ADR. La documentacion previa permanece como antecedente historico.
+**Estado:** documentación y contratos en borrador versionados en Git; no existe aplicación implementada ni recursos AWS creados. La división Auth / Tickets / Chat fue bien recibida por el equipo, pero los contratos técnicos siguen pendientes de revisión.
 
-> **Continuidad entre chats (10 nov 2026):** leer [docs/009.HANDOFF.md](docs/009.HANDOFF.md). Incluye el PDF nuevo de Valeria, decisiones recientes y gates pendientes; las propuestas de monolito y dos microservicios son antecedentes, no acuerdos vigentes.
+## Leer solamente lo necesario
 
-## Equipo
+- [Índice y fuentes](docs/000.INDEX.md) — qué documento es la referencia vigente
+- [Producto y requisitos](docs/001.Product.md) · [FR/NFR](docs/002.Requirements.md)
+- [Arquitectura actual](docs/003.Architecture.md) · [Contratos y permisos](docs/010.G1-Contracts.md)
+- [API OpenAPI (draft)](docs/openapi.json) · [DB 3NF/FK/migración](docs/database/README.md)
+- [Cloud y S3](docs/004.Cloud.md) · [Entrega](docs/005.Delivery.md) · [Estado de gates](docs/011.Gates.md)
+- [Decisiones](docs/006.Decisions.md) · [Resumen para docentes](docs/014.Resumen-Ejecutivo.md)
 
-- [caml07](https://github.com/caml07) — Web II; Cloud (segun lo conversado).
-- [avaleria13](https://github.com/avaleria13) — Web II; Cloud (segun lo conversado).
-- [Rinahrrg](https://github.com/Rinahrrg) — Web II; colaboracion en interfaz/datos. No ha cursado Cloud, segun informacion mas reciente.
+## Reglas de colaboración
 
-La distribucion concreta de tareas todavia no esta aprobada por el equipo.
+[CONTEXT.md](CONTEXT.md) es la guía canónica; [CLAUDE.md](CLAUDE.md) es el puente mínimo exigido por COP3851. El profesor Félix exige **OpenAPI y esquema 3NF/FK/migraciones validados y commiteados antes de generar controladores con IA**. El commit inicial de borradores no equivale a validación formal.
 
-## Dos enfoques en evaluacion
+No hacer commits, push, merge ni crear recursos AWS sin autorización expresa. Preparar el MVP y probarlo localmente antes de desplegar.
 
-1. **Propuesta original de mantenimiento general:** documento completo compartido por Valeria, conservado sin modificar en [docs/references/FixIt_Project_Specification.pdf](docs/references/FixIt_Project_Specification.pdf).
-2. **Propuesta provisional de IT Help Desk:** tickets de soporte tecnico y chat asociado a cada ticket. Vease [docs/requirements.md](docs/requirements.md).
+## Equipo y fuentes originales
 
-El equipo dio su visto bueno para continuar con la segunda. Se preserva el PDF original; no se pretende que el MVP replique todas sus funciones. Comparacion previa en [docs/comparison.md](docs/comparison.md).
+- caml07: Web II y Cloud
+- Valeria (avaleria13): Web II y Cloud; autora de la [propuesta original](docs/references/FixIt_Project_Specification.pdf), aunque su portada identifica la cuenta de Yaderling
+- Rina (Rinahrrg): Web II y trabajo de Software Engineering II; también puede colaborar con desarrollo y datos
 
-## Estado actual
-
-- [x] Repositorio privado creado.
-- [x] Ramas `main` y `dev` creadas; esta documentacion se prepara en `dev`.
-- [x] Alcance IT Help Desk aprobado como direccion del producto por el equipo.
-- [x] Chat dentro de cada ticket y autoasignacion de tickets disponibles planteados.
-- [x] Una infraestructura de bases de datos **compartida por los tres** como criterio de diseno.
-- [x] Documentos canonicos de producto, requisitos, arquitectura, Cloud, delivery y ADR redactados **en borrador**.
-- [ ] Aprobacion de decisiones tecnicas, rubricas y costos AWS con el equipo y docentes.
-- [ ] Implementacion, pruebas y recursos AWS: **no iniciados**.
-
-## Documentacion canonica
-
-- [Indice de documentacion](docs/000.INDEX.md)
-- [Producto y alcance](docs/001.Product.md)
-- [Requisitos FR/NFR](docs/002.Requirements.md)
-- [Arquitectura tecnica](docs/003.Architecture.md)
-- [AWS, S3 Versioning y costos](docs/004.Cloud.md)
-- [Plan y pruebas](docs/005.Delivery.md)
-- [ADR y preguntas abiertas](docs/006.Decisions.md)
-- [Evaluación EDA/microservicios y gates](docs/007.EDA-Evaluation.md)
-- [Estructura propuesta, agents y tests](docs/008.Repository-Structure.md)
-
-## Borradores historicos conservados
-
-- [Requisitos y flujos propuestos](docs/requirements.md)
-- [Comparacion con la propuesta original](docs/comparison.md)
-- [Cloud, datos y acceso del equipo](docs/cloud-access.md)
-- [Cobertura de materias y preguntas pendientes](docs/course-alignment.md)
-
-**Regla de colaboracion:** no tratar las decisiones tecnicas propuestas como implantadas; no guardar credenciales en Git. El codigo y los cambios futuros via ramas feat/* y PR hacia dev, segun acuerdo del grupo.
+Los roles operativos todavía deben acordarse en equipo. La [adaptación para tres cursos](docs/references/FixIt_Adapting_Cloud_and_Software_Engineering_II_2026-11-10.pdf) es un estudio de alcance, no una rúbrica docente aprobada. La [hoja Contract-First de Félix](docs/references/COP3851_Capstone_2026-11-11.md) sí debe verificarse en la implementación. Las alternativas anteriores se pueden consultar en el historial Git; no son arquitectura vigente.

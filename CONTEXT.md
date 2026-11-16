@@ -18,7 +18,7 @@ No ampliar de momento el alcance a mantenimiento de instalaciones, IA, SLA,
 adjuntos multiples o funcionalidades accesorias. La foto opcional vinculada al
 ticket es una excepcion ya incluida en el MVP. Ver [Product](docs/001.Product.md),
 [Requirements](docs/002.Requirements.md) y
-[course-alignment](docs/course-alignment.md).
+[Delivery](docs/005.Delivery.md).
 
 ## Qué decisiones sí quedaron confirmadas
 
@@ -172,9 +172,9 @@ están en [docs/references/COP3851_Capstone_2026-11-11.md](docs/references/COP38
 - **Antes de que agentes de IA creen nuevos controladores:** generar
   `docs/openapi.json`, modelo relacional **3NF con FK explícitas** y
   migraciones; **commitearlos previamente** (no solo escribirlos en Markdown).
-  **Desde el 15 nov existen borradores** [OpenAPI](docs/openapi.json),
+  **Desde el 15 nov existen borradores commiteados** [OpenAPI](docs/openapi.json),
   [Prisma y migracion SQL](docs/database/README.md), autorizados por el usuario
-  solo como documentacion. **No estan commiteados; el SQL paso un smoke test limitado en PostgreSQL 17, pero falta validacion formal de OAS y Prisma CLI, permisos DB y concurrencia. No existen controladores del producto.** El spike de G2 es historico y no
+  solo como documentacion. **Se guardaron como draft en Git, no estan aprobados: el SQL paso un smoke test limitado en PostgreSQL 17, Redocly OAS y Prisma CLI 7.3.0 validaron sintaxis; faltan comparar Prisma vs SQL, permisos DB, concurrencia y ratificacion del equipo. No existen controladores del producto.** El spike de G2 es historico y no
   cuenta como cumplimiento Contract-First.
 - **`CONTEXT.md` es nuestra unica constitucion canonica** para agentes,
   arquitectura y continuidad del equipo; no crear otra con contenido

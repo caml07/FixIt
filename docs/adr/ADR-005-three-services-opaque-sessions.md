@@ -15,7 +15,7 @@ decision_id: ADR-005
 
 ## Contexto
 
-El producto IT Help Desk acordado necesita identidad, tickets con claim atomico y chat persistente. El [ADR-004](ADR-004-eda-two-services.md) documenta la opcion anterior de **Core API + Chat + NATS**. En el handoff 009 el usuario eligio **explorar Auth + Tickets + Chat**, NATS JetStream, bcrypt y sesiones opacas en vez de JWT.
+El producto IT Help Desk acordado necesita identidad, tickets con claim atomico y chat persistente. La alternativa historica de **Core API + Chat + NATS** se conserva en Git (antiguo ADR-004). Despues el usuario eligio **explorar Auth + Tickets + Chat**, NATS JetStream, bcrypt y sesiones opacas en vez de JWT.
 
 Queremos una separacion comprobable para Web Development II, eventos reales y un modelo de dominio explicable en Software Engineering II, sin agregar IA, hazards, WorkOrder, SLA ni microservicios de relleno.
 
@@ -69,7 +69,7 @@ artefactos está implementado aún.
 - **Costo:** latencia de introspeccion/authz REST, 3 Node + PG + Mongo + NATS en la misma EC2 candidata y operacion de credenciales internas.
 - **Seguridad:** Argon2id con verificacion de contrasenas completas, rate limit, CSRF, Origin del upgrade WebSocket, scopes por servicio, logs redactados y revocacion/reasignacion son condiciones de entrada, no extras.
 - **Consistencia:** no existe transaccion SQL-Mongo-NATS; no prometer exactly-once ni ausencia absoluta de carreras permiso-vs-reasignacion sin protocolo demostrado.
-- **Historico:** ADR-004 y ADR-001 siguen siendo **opciones historicas propuestas**, no marcar superseded antes de aceptar ADR-005.
+- **Historico:** monolito modular (ex ADR-001) y dos servicios (ex ADR-004) fueron alternativas propuestas, ahora retiradas de la documentacion activa para reducir duplicidad. Su contenido sigue recuperable en Git. **ADR-005 aun requiere ratificacion del equipo**.
 - **Cloud:** una unica EC2/t3.medium permanece hipotesis; la propuesta de dos VPC/dos VM del PDF compartido por Valeria se evalua contra la rubrica, no se adopta automaticamente.
 - **Equipo:** hay conformidad comunicada con el concepto y la division en tres servicios; no ratificacion detallada de este ADR. Software Engineering II queda pendiente de validacion docente.
 
@@ -82,4 +82,4 @@ artefactos está implementado aún.
 
 ## Fuentes
 
-[009.HANDOFF](../009.HANDOFF.md), [002.Requirements](../002.Requirements.md), [006.Decisions](../006.Decisions.md), [010.G1-Contracts](../010.G1-Contracts.md), [PDF adicional de Cloud/SE II](../references/FixIt_Adapting_Cloud_and_Software_Engineering_II_2026-11-10.pdf), [NATS](https://docs.nats.io/concepts/jetstream), [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
+[CONTEXT actual](../../CONTEXT.md), [002.Requirements](../002.Requirements.md), [006.Decisions](../006.Decisions.md), [010.G1-Contracts](../010.G1-Contracts.md), [PDF adicional de Cloud/SE II](../references/FixIt_Adapting_Cloud_and_Software_Engineering_II_2026-11-10.pdf), [NATS](https://docs.nats.io/concepts/jetstream), [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
