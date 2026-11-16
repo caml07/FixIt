@@ -1,11 +1,11 @@
-# Esquema 3NF y primera migracion (borrador)
+# Esquema 3NF y migracion inicial — Contract-First
 
-**Estado:** Contract-First documental, 15 nov 2026. OpenAPI, Prisma y SQL tienen **commit inicial de borradores**. Comprobaciones locales posteriores: `npx prisma@7.3.0 validate --schema docs/database/schema.prisma` **PASS**; Redocly validó OpenAPI con 5 advertencias no bloqueantes; la migración SQL **PASS en PostgreSQL 17 efímero, sin red, tmpfs** (8 tablas, 12 FK, 5 categorías). **No prueba equivalencia Prisma/SQL, roles de DB, carreras ni revisión del equipo**; todavía no generar controllers.
+**Estado (16 nov 2026):** OpenAPI 3.1.1 validada con Redocly (5 warnings no bloqueantes). Versiones `prisma`, `@prisma/client` y `@prisma/adapter-pg` fijadas en **7.10.1**. El esquema pasa `prisma validate` y la migracion manual **pasa Prisma Migrate deploy** contra PostgreSQL 17 efimero. `prisma migrate diff --from-config-datasource --to-schema docs/database/schema.prisma --script --exit-code` produce una migracion vacia. Prisma no inspecciona todos los `CHECK`/indices especiales; preservarlos por SQL. **No existe servicio real de producto ni ratificacion tecnica del equipo. G1 NO PASS.**
 
 ## Archivos y autoridad
 
-- [schema.prisma](schema.prisma): modelo propuesto de Prisma ORM v7 para una **sola** PostgreSQL con esquemas `auth` y `tickets`. Validado con Prisma CLI 7.3.0 **vía `npx` temporal**, no instalado como dependencia del repositorio ni fijado en lockfile.
-- [migrations/0001_initial.sql](migrations/0001_initial.sql): **migracion SQL inicial redactada manualmente**, con 3NF, FK, CHECK, indices, unicidad, catalogo inicial de cinco categorias y `BEGIN/COMMIT`. La aplicacion en PostgreSQL 17 temporal paso, **pero NO fue generada ni validada con Prisma Migrate**. Antes del primer commit de implementacion, elegir version estable de Prisma, generar/comparar el SQL y corregir drift. Una sola cadena de migraciones es la fuente operativa, no dos migradores por microservicio.
+- [schema.prisma](schema.prisma): modelo de Prisma ORM **7.10.1** con una PostgreSQL y esquemas `auth`/`tickets`, y nombre/ON UPDATE de las 12 FK alineados con SQL. Version y cliente fijados en `package-lock.json`; cliente generado en `generated/prisma` (ignorado por Git).
+- [migrations/20261115000100_initial/migration.sql](migrations/20261115000100_initial/migration.sql): **una unica migracion inicial manual, adoptada por Prisma Migrate**, con 3NF/FK, `CHECK`, indice `lower(email)`, indices parciales y categorias semilla. `npm run db:migrate` pasa en PostgreSQL 17 de prueba con `DATABASE_URL`; queda registrada en `_prisma_migrations`. No duplicar migradores ni generar segunda migracion inicial con `db push`.
 - [../openapi.json](../openapi.json): contrato REST publico e interno propuesto. Las rutas `/internal/v1` estan marcadas con `x-internal` y **no** deben aparecer en el reverse proxy publico. El contrato de Socket.IO sigue en [../010.G1-Contracts.md](../010.G1-Contracts.md).
 
 ## Tercera forma normal
@@ -50,7 +50,7 @@ Las restricciones `CHECK`, el indice `lower(email)` y el indice parcial de cola 
 **Evidencia inicial 15 nov (local):** `postgres:17-alpine` con `podman run --rm --network none` y `tmpfs`; `0001_initial.sql` **PASS**, 8 tablas, 12 FK y 5 categorias semilla. Se probaron unicidad de email case-insensitive, FK de reporter y claim secuencial. Redocly valido OAS 3.1.1 (5 advertencias no bloqueantes) y Prisma CLI 7.3.0 valido la sintaxis del schema.
 
 1. Revisar modelo con Valeria y Rina, especialmente FK cruzadas, estados, excepciones y minimizacion de datos.
-2. Fijar version de Prisma/cliente PostgreSQL. **Prisma CLI 7.3.0 ya valida la sintaxis**, pero falta generar/comparar su migracion con el SQL artesanal y conservar `CHECK` e indices SQL.
+2. **Completado (16 nov):** Prisma 7.10.1 y `@prisma/adapter-pg` fijados en lockfile; `migrate deploy` aplica la migracion versionada y `migrate diff` detecta **cero drift representable en Prisma**. Mantener los `CHECK` y los indices SQL expresionales/parciales en revisiones de migraciones futuras.
 3. Repetir desde **Tickets real** la transaccion de claim/timeline/outbox ya ensayada con SQL (16 nov). Aun faltan: provision y GRANTs reproducibles de roles runtime, estados/transiciones completos, comparacion de tipos/defaults/indices Prisma vs SQL, pruebas de migracion de version/rollback y API 409. Las pruebas SQL locales no hacen G1 PASS.
 4. Validar [OpenAPI](../openapi.json) (referencias, esquema, tipos de respuesta, seguridad y roles). Si se modifica una ruta, corregir contrato **antes** de implementar el endpoint.
 5. Tras validaciones formales y revision de equipo, documentar los resultados y realizar **un nuevo commit correctivo del contrato/esquema** (con autorizacion del usuario), **anterior a generar controllers**. El commit de draft por si solo no acredita esos pasos.

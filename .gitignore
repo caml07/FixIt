@@ -8,6 +8,7 @@ vault/Config/
 
 # Local development artifacts
 node_modules/
+generated/
 dist/
 coverage/
 .DS_Store

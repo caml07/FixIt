@@ -23,7 +23,7 @@ model User {
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  createdBy          User?              @relation("UserCreators", fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy          User?              @relation("UserCreators", fields: [createdById], references: [id], onDelete: Restrict, onUpdate: NoAction)
   createdUsers       User[]             @relation("UserCreators")
   sessions           Session[]
   subjectAudit       AccountAudit[]     @relation("AuditSubjects")
@@ -47,7 +47,7 @@ model Session {
   expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
   revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([userId], map: "sessions_user_id_idx")
   @@map("sessions")
@@ -62,8 +62,8 @@ model AccountAudit {
   reason        String?
   occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(6)
 
-  subject User  @relation("AuditSubjects", fields: [subjectUserId], references: [id], onDelete: Restrict)
-  actor   User? @relation("AuditActors", fields: [actorUserId], references: [id], onDelete: Restrict)
+  subject User  @relation("AuditSubjects", fields: [subjectUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actor   User? @relation("AuditActors", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([subjectUserId, occurredAt], map: "account_audit_subject_idx")
   @@map("account_audit")
@@ -95,9 +95,9 @@ model SupportTicket {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  reporter   User              @relation("Reporters", fields: [reporterId], references: [id], onDelete: Restrict)
-  assignee   User?             @relation("Assignees", fields: [assigneeId], references: [id], onDelete: Restrict)
-  category   Category          @relation(fields: [categoryCode], references: [code], onDelete: Restrict)
+  reporter   User              @relation("Reporters", fields: [reporterId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  assignee   User?             @relation("Assignees", fields: [assigneeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  category   Category          @relation(fields: [categoryCode], references: [code], onDelete: Restrict, onUpdate: NoAction)
   timeline   TicketTimeline[]
   attachment TicketAttachment?
 
@@ -118,8 +118,8 @@ model TicketTimeline {
   reason        String?
   recordedAt    DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
 
-  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
-  actor  User          @relation("TimelineActors", fields: [actorUserId], references: [id], onDelete: Restrict)
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actor  User          @relation("TimelineActors", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   outbox Outbox?       @relation("TimelineOutbox")
 
   @@unique([ticketId, ticketVersion], map: "ticket_timeline_version_uq")
@@ -137,7 +137,7 @@ model Outbox {
   publishedAt      DateTime? @map("published_at") @db.Timestamptz(6)
   attempts         Int       @default(0)
 
-  timeline TicketTimeline @relation("TimelineOutbox", fields: [ticketId, aggregateVersion], references: [ticketId, ticketVersion], onDelete: Restrict)
+  timeline TicketTimeline @relation("TimelineOutbox", fields: [ticketId, aggregateVersion], references: [ticketId, ticketVersion], onDelete: Restrict, onUpdate: NoAction, map: "outbox_timeline_fk")
 
   @@unique([ticketId, aggregateVersion], map: "outbox_event_version_uq")
   @@map("outbox")
@@ -154,8 +154,8 @@ model TicketAttachment {
   sha256Hex   String   @map("sha256_hex") @db.Char(64)
   uploadedAt  DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
 
-  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
-  uploader User          @relation("AttachmentUploaders", fields: [uploadedBy], references: [id], onDelete: Restrict)
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  uploader User          @relation("AttachmentUploaders", fields: [uploadedBy], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@map("ticket_attachments")
   @@schema("tickets")

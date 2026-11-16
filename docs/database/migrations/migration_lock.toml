@@ -1,0 +1,2 @@
+# Prisma migration engine, one coordinated PostgreSQL migration chain.
+provider = "postgresql"
