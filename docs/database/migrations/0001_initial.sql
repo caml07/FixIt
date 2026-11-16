@@ -1,5 +1,5 @@
 -- DRAFT Contract-First schema, 15 Nov 2026.
--- PostgreSQL 16+ expected. Review and validate BEFORE committing or applying.
+-- PostgreSQL 16+ expected. Committed as DRAFT and smoke-tested in disposable PostgreSQL 17; formal SQL/Prisma parity and access-review remain pending before controllers.
 -- One coordinated migration owner for auth and tickets; do not auto-run per service.
 BEGIN;
 
@@ -42,7 +42,7 @@ CREATE TABLE auth.account_audit (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   subject_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   actor_user_id uuid REFERENCES auth.users(id) ON DELETE RESTRICT,
-  action text NOT NULL CHECK (action IN ('BOOTSTRAPPED', 'CREATED', 'PASSWORD_ACTIVATED', 'PASSWORD_RESET', 'DISABLED', 'ROLE_CHANGED')),
+  action text NOT NULL CHECK (action IN ('BOOTSTRAPPED', 'CREATED', 'PASSWORD_ACTIVATED', 'PASSWORD_RESET', 'DISABLED', 'REACTIVATED', 'ROLE_CHANGED')),
   reason text,
   occurred_at timestamptz NOT NULL DEFAULT now()
 );

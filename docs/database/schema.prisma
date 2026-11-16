@@ -1,6 +1,6 @@
 // Contract-first draft for PostgreSQL schemas auth + tickets (Prisma ORM v7 syntax).
 // SQL migration is reviewed separately; PostgreSQL CHECK/expression indexes live in SQL.
-// One migration owner. Not validated with the Prisma CLI or run against a database.
+// One migration owner. Prisma CLI 7.3.0 validated schema syntax; SQL migration separately smoke-tested in ephemeral PostgreSQL 17. Drift not verified.
 generator client {
   provider = "prisma-client"
   output   = "../../generated/prisma"
