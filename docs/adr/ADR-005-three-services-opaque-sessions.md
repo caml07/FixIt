@@ -1,7 +1,7 @@
 ---
 type: architecture-decision-record
 status: proposed
-reviewed_on: 2026-11-11
+reviewed_on: 2026-11-15
 decision_id: ADR-005
 ---
 
@@ -10,6 +10,8 @@ decision_id: ADR-005
 ## Estado
 
 **PROPOSED / selected for design by the user, NOT accepted by the FixIt team.** El usuario confirmo el 11 nov que desea **Auth + Tickets + Chat como runtimes independientes** con una **base PostgreSQL compartida en esquemas `auth` y `tickets`**. Esto confirma una direccion de diseño, **no** la aceptación de todo ADR-005 ni el PASS de G1. No existe producto implementado ni despliegue; se dispone solo de evidencia historica del spike G2, no de un benchmark de la aplicacion final.
+
+**Actualizacion 15 nov:** Valeria y Rina respaldaron el concepto general y la division en tres servicios, segun el usuario. Valeria considera adecuada la propuesta Cloud con la condicion de **vigilar los gastos**. Los contratos REST, autorizacion, persistencia, eventos y presupuesto siguen para revision tecnica; por eso el ADR permanece `proposed`. El usuario tambien eligio **Argon2id** para el hashing de contrasenas, en lugar de bcrypt.
 
 ## Contexto
 
@@ -29,7 +31,7 @@ Queremos una separacion comprobable para Web Development II, eventos reales y un
 ## Direccion seleccionada para el diseno
 
 1. Tres runtimes Express: Auth (Account/Session/Role), Tickets (SupportTicket/Assignment/Timeline/outbox), Chat (Message/Mongo/Socket.io); mismo reverse proxy HTTPS/WSS. **Una base PostgreSQL** para Auth y Tickets con esquemas `auth` y `tickets`, cuentas de BD y privilegios separados. Cada servicio accede solo a sus tablas de negocio mediante su propio rol; las FK referencian `auth.users` desde `tickets` sin convertirlas en una API interna ni permitir consultas arbitrarias cruzadas. Chat mantiene MongoDB.
-2. Auth emite sesion opaca de alta entropia en cookie segura y guarda solo hash del token en PG; bcrypt con salt automatico y work factor calibrado. No JWT de browser.
+2. Auth emite sesion opaca de alta entropia en cookie segura y guarda solo hash del token en PG. Las contrasenas se almacenan con Argon2id y sal gestionada por la libreria; los parametros se calibran antes de implementar. No JWT de browser.
 3. Tickets y Chat validan identidad con Auth por introspeccion interna autenticada. Tickets es el **Policy Decision Point** para acceso al ticket; Chat siempre consulta a Tickets para joins, mensajes, historial y destinatarios. NATS no concede permisos.
 4. Tickets guarda mutacion de dominio, timeline y outbox en la misma transaccion PG. Publica eventos versionados en JetStream; Chat consume at-least-once de forma idempotente y reconcilia con Tickets cuando la secuencia no concuerda.
 5. BCs candidatos: Identity & Access (generic), IT Support Ticketing (core) y Ticket Conversation (supporting). No son equivalentes a dos core contexts academicos. Si la rubrica exige dos contextos **de negocio**, reconsiderar dentro de Tickets el corte Issue Intake / Support Resolution sin desplegar otro servicio por reflejo.
@@ -65,11 +67,11 @@ artefactos está implementado aún.
 
 - **Beneficio:** frontera de identidad clara, control de asignacion en un solo dueño, eventual consistency intencional en Chat, practicable en pruebas contractuales.
 - **Costo:** latencia de introspeccion/authz REST, 3 Node + PG + Mongo + NATS en la misma EC2 candidata y operacion de credenciales internas.
-- **Seguridad:** rate limit, limite bcrypt de 72 bytes, CSRF, Origin del upgrade WebSocket, scopes por servicio, logs redactados y revocacion/reasignacion son condiciones de entrada, no extras.
+- **Seguridad:** Argon2id con verificacion de contrasenas completas, rate limit, CSRF, Origin del upgrade WebSocket, scopes por servicio, logs redactados y revocacion/reasignacion son condiciones de entrada, no extras.
 - **Consistencia:** no existe transaccion SQL-Mongo-NATS; no prometer exactly-once ni ausencia absoluta de carreras permiso-vs-reasignacion sin protocolo demostrado.
 - **Historico:** ADR-004 y ADR-001 siguen siendo **opciones historicas propuestas**, no marcar superseded antes de aceptar ADR-005.
 - **Cloud:** una unica EC2/t3.medium permanece hipotesis; la propuesta de dos VPC/dos VM del PDF compartido por Valeria se evalua contra la rubrica, no se adopta automaticamente.
-- **Equipo:** aun no hay aceptacion de los tres integrantes ni confirmacion docente para usar el proyecto en Software Engineering II.
+- **Equipo:** hay conformidad comunicada con el concepto y la division en tres servicios; no ratificacion detallada de este ADR. Software Engineering II queda pendiente de validacion docente.
 
 ## Evidencia requerida para ACCEPTED / gate G1
 
