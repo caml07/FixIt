@@ -1,6 +1,6 @@
 # FixIt — CONTEXT
 
-> Ultima revision: 11 de noviembre de 2026 (America/Managua).
+> Ultima revision: 15 de noviembre de 2026 (America/Managua).
 > Documento de continuidad para el equipo y asistentes que retomen el repositorio.
 > El estado verificable y los cambios aprobados por el equipo están en los
 > documentos enlazados. Este archivo **no aprueba gates ni ADR por sí mismo**.
@@ -15,7 +15,8 @@ asignación de agentes y chat privado asociado a cada ticket.
 Se busca reutilizar una sola solución para Web Development II y Cloud &
 Internet Computing, con posible alineación adicional a Software Engineering II.
 No ampliar de momento el alcance a mantenimiento de instalaciones, IA, SLA,
-adjuntos o funcionalidades accesorias. Ver [Product](docs/001.Product.md),
+adjuntos multiples o funcionalidades accesorias. La foto opcional vinculada al
+ticket es una excepcion ya incluida en el MVP. Ver [Product](docs/001.Product.md),
 [Requirements](docs/002.Requirements.md) y
 [course-alignment](docs/course-alignment.md).
 
@@ -37,7 +38,12 @@ adjuntos o funcionalidades accesorias. Ver [Product](docs/001.Product.md),
   minimos sin MFA, aceptar 64+, Unicode, sin composicion obligatoria,
   blocklist, limitacion de intentos y sin rotacion periodica arbitraria.
   **No es politica universitaria verificada; 72 h es decision de FixIt.**
-  Falta revisar con equipo entrega segura y algoritmos.
+  **Decision del usuario, 15 nov:** el primer seeder muestra la credencial
+  aleatoria una sola vez en un TTY privado al operador autorizado, no en
+  logs, CI ni stdout de contenedores; si no existe TTY seguro, no crea cuenta.
+  Recuperacion seleccionada: un CLI local y manual resetea **la misma cuenta
+  Admin**, invalida sesiones y audita; no reejecuta seed ni agrega servicios.
+  Argon2id elegido; faltan calibracion y pruebas.
 - Chat pertenece a cada ticket; solo sus participantes autorizados deben
   acceder. **B2 alternativa A elegida por el usuario (11 nov):** las
   operaciones nuevas del agente anterior se rechazan tras la reasignacion,
@@ -48,11 +54,18 @@ adjuntos o funcionalidades accesorias. Ver [Product](docs/001.Product.md),
 
 **Preferencias técnicas en estudio, no ratificadas por el equipo:**
 
+El usuario informo el 15 nov que Valeria y Rina respaldan el concepto general
+y la division en Auth/Tickets/Chat. Valeria considera bien encaminada la
+direccion Cloud, pero advierte del riesgo de gastos. La ratificacion de
+contratos, datos y eventos queda pendiente. Consultar
+[006.Decisions](docs/006.Decisions.md) antes de cambiar el estado de ADR-005.
+
 - Candidato principal: **Auth, Tickets y Chat**, con REST interno, Socket.IO
   para chat, **una PostgreSQL con esquemas `auth`/`tickets` y roles SQL
   separados** (propuesta aceptada expresamente por usuario, 11 nov),
   MongoDB para mensajes en Chat y NATS JetStream para eventos. Sesiones
-  **opacas**, hashes bcrypt, autorización interna por servicio.
+  **opacas**, Argon2id seleccionado el 15 nov para contrasenas,
+  autorización interna por servicio.
   **G1-C alternativa B elegida por usuario el 11 nov:** REST sincrono
   exclusivamente para decisiones de identidad/permisos y NATS JetStream
   asincrono para publicar cambios de Tickets mediante outbox; Chat usa
@@ -111,8 +124,20 @@ defaults propuestos para review del equipo: Compose en una EC2, proxy
 HTTPS unico, SSM y rol IAM, PostgreSQL/Mongo/JetStream sobre EBS duradero,
 S3 privado para releases salvo rubrica distinta, despliegue manual por SHA,
 backup/restore, pruebas y observabilidad. **Pendientes que si importan:**
-website vs versioning S3, demo publica/dominio TLS y presupuesto/capacidad.
+**S3 Versioning de releases confirmado posteriormente por usuario como indicacion de Marvin el 15 nov**; titularidad/dominio, costo y capacidad siguen por comprobar.
 No crear nuevos gates ni cambiar el scope de los tres servicios.
+
+**Publicacion elegida por usuario el 15 nov (solo diseno):** DigitalPlat
+FreeDomain delega DNS a Cloudflare y un **Cloudflare Tunnel nombrado** publica
+un hostname HTTPS/WSS de FixIt hacia el proxy local. No hay dominio, tunnel,
+credenciales Cloudflare ni EC2 creados. El requisito de salida de EC2 y sus
+precios siguen abiertos; un tunnel no garantiza IPv4/NAT sin costo. Valeria
+pidio controlar gastos. **El usuario es titular principal de DigitalPlat/Cloudflare
+y Valeria colaboradora delegada cuando sea compatible**, con cuentas/MFA
+individuales. **Techo: US$120 de costo AWS acumulado para todo FixIt**,
+cubierto solo con creditos reales, no dinero personal. Hasta US$200 es el
+maximo promocional, no saldo garantizado. Sin provisionar ni activar Paid.
+**EC2 Spot elegida: `persistent` EBS-backed con interrupcion `stop`, start/stop manual y no 24/7**. Si Spot no esta disponible para una presentacion, **nueva On-Demand temporal** restaurada desde backups (sin conversion in-place ni infraestructura adicional fija), solo si cabe en creditos. **Backups PG/Mongo cifrados y privados en S3, conservados sin borrado automatico; exportar copia verificada fuera de AWS al finalizar antes de cualquier cleanup**. Faltan pruebas de plan, costo, capacidad, restarts y restore. Ver [004.Cloud, secciones 4, 6 y 10](docs/004.Cloud.md).
 
 **Presentacion unificada (11 nov):** [014.Resumen-Ejecutivo](docs/014.Resumen-Ejecutivo.md)
 resume el MVP, el diagrama y las decisiones, mas la agenda para Marvin y
@@ -120,22 +145,21 @@ Felix el **12 nov**, y para Valeria/Rina cuando se reunan. Distingue
 lo confirmado, las propuestas y los hitos no verificados. Es la referencia
 corta para docentes, sin reemplazar los requisitos y gates canonicos.
 
-**ORM recomendados para review (12 nov; NO implementados):**
+**ORM recomendados para review (sin implementacion):**
 Prisma ORM para la unica PostgreSQL con esquemas `auth` y `tickets`,
 **un unico owner/historial de migraciones** por FK entre esquemas,
 clientes y cuentas SQL de runtime separados; **Mongoose** para
 MongoDB de Chat (`messages`, dedupe/inbox). El ER conceptual
 de [G1](docs/010.G1-Contracts.md) ahora incluye
 `tickets.ticket_attachments` para metadata de foto privada. Son
-**candidatos**, no se ha seleccionado version ni creado codigo,
-Prisma schema o migraciones. Ver decision [A-16](docs/006.Decisions.md).
+**candidatos**; existen [schema Prisma y SQL inicial en borrador](docs/database/README.md),
+sin aplicar ni validar en PostgreSQL. Ver decision [A-16](docs/006.Decisions.md).
 
-**Alerta de hashing antes de G4:** se eligio bcrypt para estudiar y
-experimentar, pero su limite habitual de **72 bytes** puede truncar
-passwords largas Unicode. NIST exige verificar la password completa y
-admitir al menos 64 caracteres. No marcar la implementacion como
-compatible hasta decidir una tecnica de hashing sin truncamiento
-(Argon2id o una alternativa bcrypt debidamente auditada). Ver
+**Hashing elegido el 15 nov:** Argon2id para contrasenas del producto,
+con valores OWASP de partida `m=19456 KiB, t=2, p=1` para benchmark.
+Las mediciones bcrypt siguen siendo historia del spike, no validan Auth final.
+Probar Unicode largo, normalizacion consistente, blocklist y rendimiento
+antes de afirmar cumplimiento NIST. Ver
 [G1](docs/010.G1-Contracts.md) y
 [NIST 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html).
 
@@ -148,19 +172,13 @@ están en [docs/references/COP3851_Capstone_2026-11-11.md](docs/references/COP38
 - **Antes de que agentes de IA creen nuevos controladores:** generar
   `docs/openapi.json`, modelo relacional **3NF con FK explícitas** y
   migraciones; **commitearlos previamente** (no solo escribirlos en Markdown).
-  **Aun no hay archivos OpenAPI, SQL, migraciones ni controllers del producto.**
-  El usuario pidio conservar solamente el diseño y los diagramas de G1
-  en [docs/010.G1-Contracts.md](docs/010.G1-Contracts.md); se retiraron
-  borradores tecnicos prematuros. Los contratos formales y su commit vendran
-  cuando el equipo acuerde comenzar G4. El spike de G2 es historico y no
-  cuenta como cumplimiento contractual del capstone.
+  **Desde el 15 nov existen borradores** [OpenAPI](docs/openapi.json),
+  [Prisma y migracion SQL](docs/database/README.md), autorizados por el usuario
+  solo como documentacion. **No estan commiteados; el SQL paso un smoke test limitado en PostgreSQL 17, pero falta validacion formal de OAS y Prisma CLI, permisos DB y concurrencia. No existen controladores del producto.** El spike de G2 es historico y no
+  cuenta como cumplimiento Contract-First.
 - **`CONTEXT.md` es nuestra unica constitucion canonica** para agentes,
   arquitectura y continuidad del equipo; no crear otra con contenido
-  duplicado. **Advertencia de rubrica:** el PDF exige literalmente un archivo
-  raiz `CLAUDE.md` o `GEMINI.md`; `CONTEXT.md` por si solo **no satisface
-  ese nombre de archivo**. Dejar este conflicto explicito para comprobarlo
-  con Felix y, si hace falta, introducir al final un archivo puente minimo
-  que apunte a este CONTEXT, sin mantener dos textos diferentes.
+  duplicado. **Puente `CLAUDE.md` creado el 15 nov:** archivo minimo en raiz enlazado a este CONTEXT canonico, con reglas Contract-First y seguridad exigidas por COP3851. Falta commit y confirmacion docente de suficiencia; no duplicar toda la constitucion.
 - Rubrica: **25%** OpenAPI/3NF/migraciones, **20%** arquitectura/middleware,
   **25%** seguridad y AI Red Team, **20%** solución funcional, **10%** defensa
   en vivo/extension de middleware.
@@ -186,9 +204,7 @@ están en [docs/references/COP3851_Capstone_2026-11-11.md](docs/references/COP38
    de OpenAPI. Primero actualizar el contrato si debe cambiar.
 2. **BOLA/IDOR:** Auth autentica, Tickets decide acceso al recurso; filtrar
    lectura, listado, actualización y broadcast por owner/asignado/Admin
-   desde backend y consultas de datos. `WHERE tenant_id = current_user` es
-   el **ejemplo del PDF**, no una columna que debamos inventar; confirmar si
-   se exige multi-tenancy o si la política de propiedad por ticket basta.
+   desde backend y consultas de datos. **Decision 15 nov: FixIt es single-tenant para Keiser University LAC (piloto academico)**. No agregar `tenant_id` a PG/Mongo/OpenAPI; el ejemplo `WHERE tenant_id = current_user` de la rubrica es ilustrativo. Usar `reporter_id`, `assignee_id` actual y `ADMIN` en permisos por recurso. Consultar solo si Felix impone multi-tenancy literal.
 3. **Persistencia:** prohibido construir SQL con entradas concatenadas;
    usar parametros/ORM, FK y migraciones. En Mongo validar tipos/operadores
    (prevenir NoSQL injection). Ticket/timeline/outbox en transacción.
@@ -238,8 +254,8 @@ FixIt se crearán tests/benchmarks nuevos basados en sus contratos.
 - **G2, ajuste:** diversas corridas de CPU y bcrypt nativo con **14/14 checks**.
   Se separó login individual de ráfagas concurrentes. Repartir cuotas
   fraccionarias demasiado bajas distorsionaba el diagnóstico; usar núcleos
-  compartidos mejoró el rendimiento. La calibración final de bcrypt y el
-  hardware EC2 aún están pendientes.
+  compartidos mejoró el rendimiento. Fue un spike historico con bcrypt;
+  la calibracion de Argon2id y hardware EC2 aun estan pendientes.
 - **G2, 10 sockets y fallos:** dos corridas corregidas de 20 s con
   **200/200 mensajes confirmados**, cero errores de carga y comparación de
   latencia sin mezclar la inyección deliberada de fallos. Se reiniciaron
@@ -262,8 +278,8 @@ en el host final, seguridad exhaustiva, pruebas prolongadas ni AWS real.
 
 | Gate | Estado honesto | ¿Qué impide PASS? |
 | --- | --- | --- |
-| G0 · Alcance/academia | **PARCIAL; nueva rubrica COP3851 recibida** | Confirmar `tenant_id`/ownership literal, comunidad IT Help Desk, entregas docentes |
-| G1 · Diseño | **PAQUETE DOCUMENTAL LISTO PARA REVISION DE EQUIPO; NO PASS** | Tres servicios/PG, B1, B2, G1-C y consistencia eventual seleccionadas por usuario; ratificacion Valeria/Rina; **commit previo** OpenAPI + 3NF/FK/migraciones cuando empiece implementacion |
+| G0 · Alcance/academia | **PARCIAL; nueva rubrica COP3851 recibida** | Single-tenant Keiser sin `tenant_id` confirmado por usuario; Felix aun debe confirmar encaje IT Help Desk y si exige columna literal, mas fechas/entregables |
+| G1 · Diseño | **DIVISION DE SERVICIOS RESPALDADA; NO PASS** | Ratificar contratos/datos, validar borradores OpenAPI/Prisma/SQL y **commitear antes de controladores** tras permiso |
 | G2 · Capacidad/Cloud | **EVIDENCIA PARCIAL; APLAZADO** | Carga prolongada, EC2/T3, costos, backup/restore y producto real |
 | G3 · Seguridad/consistencia | **B2 A SELECCIONADA POR USUARIO; RED TEAM PENDIENTE** | CSRF/Origin/Strict, eventos, carreras, BOLA/SQL/NoSQL/CORS/rate-limit y tests del producto |
 | G4 · Implementación | **GOBERNANZA CREADA; CODIGO REAL NO INICIADO** | OpenAPI/schema commiteados primero, tests, RFC dependencias, defensa en vivo y MVP real |
@@ -276,13 +292,14 @@ no confundir `PASS_SPIKE` con `PASS` del proyecto.
 ## Por dónde retomar al continuar
 
 1. Leer el **[paquete unico de revision G0–G5](docs/011.Gates.md)** y
-   [G1-Contracts](docs/010.G1-Contracts.md). La revision con Valeria/Rina
-   queda pendiente para cuando el equipo pueda reunirse, no implica PASS.
-2. **Sin codigo aun:** resolver dudas academicas de G0 con profesores y
-   presentar G1 al equipo **en bloque**; no abrir mas microgates de diseno.
+   [G1-Contracts](docs/010.G1-Contracts.md). Valeria y Rina respaldan
+   el concepto y la division; faltan los contratos detallados.
+2. **Sin codigo del producto:** resolver dudas academicas de G0 y
+   revisar G1 **en bloque**; no abrir mas microgates de diseno.
    Las pruebas G2/G3 se haran sobre el producto cuando exista.
-3. **Solo tras autorizacion de implementar G4**, validar
+3. Revisar/validar los borradores de
    `docs/openapi.json` y esquema **3NF/FK/migraciones** y commitearlos
+   **solo con autorizacion expresa**,
    **antes** de que agentes generen controllers. Conservar la DB PostgreSQL
    compartida con schemas `auth`/`tickets` como direccion elegida, sin
    declarar aceptado el ADR por parte de todo el equipo.
