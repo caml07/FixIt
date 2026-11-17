@@ -10,7 +10,7 @@
 - [Producto y requisitos](docs/001.Product.md) · [FR/NFR](docs/002.Requirements.md)
 - [Arquitectura actual](docs/003.Architecture.md) · [Contratos y permisos](docs/010.G1-Contracts.md)
 - [API OpenAPI (draft)](docs/openapi.json) · [DB 3NF/FK/migración](docs/database/README.md)
-- [Cloud y S3](docs/004.Cloud.md) · [Entrega](docs/005.Delivery.md) · [Estado de gates](docs/011.Gates.md)
+- [Cloud: EC2 vs Fargate/RDS/Atlas, NATS y backups S3](docs/004.Cloud.md) · [Entrega](docs/005.Delivery.md) · [Estado de gates](docs/011.Gates.md)
 - [Decisiones](docs/006.Decisions.md) · [Resumen para docentes](docs/014.Resumen-Ejecutivo.md)
 
 ## Reglas de colaboración
