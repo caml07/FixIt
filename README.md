@@ -13,6 +13,11 @@
 - [Cloud: EC2 vs Fargate/RDS/Atlas, NATS y backups S3](docs/004.Cloud.md) · [Entrega](docs/005.Delivery.md) · [Estado de gates](docs/011.Gates.md)
 - [Decisiones](docs/006.Decisions.md) · [Resumen para docentes](docs/014.Resumen-Ejecutivo.md)
 
+## Desarrollo compartido
+
+Para el arranque: [entorno híbrido y fallback local](docs/015.Hybrid-Development.md) y [CI / distribución del trabajo](docs/016.CI-Team-Workflow.md). Las IAs deben leer [AGENTS.md](AGENTS.md) y las skills de proyecto. **Chat + React corresponde al usuario**; Tickets/Valeria y Auth/Rina aún requieren aceptación. El CI valida Markdown, OpenAPI con Redocly y SQL aislado; el job de aplicaciones devuelve **SKIP explícito** hasta que existan paquetes, y después exige lint, tipos, tests, build y audit. No confundir CI documental verde con producto probado.
+
+
 ## Reglas de colaboración
 
 [CONTEXT.md](CONTEXT.md) es la guía canónica; [CLAUDE.md](CLAUDE.md) es el puente mínimo exigido por COP3851. El profesor Félix exige **OpenAPI y esquema 3NF/FK/migraciones validados y commiteados antes de generar controladores con IA**. El commit inicial de borradores no equivale a validación formal.

@@ -1,9 +1,11 @@
 # FixIt — CONTEXT
 
-> Ultima revision: 15 de noviembre de 2026 (America/Managua).
+> Ultima revision: 18 de noviembre de 2026 (America/Managua).
 > Documento de continuidad para el equipo y asistentes que retomen el repositorio.
 > El estado verificable y los cambios aprobados por el equipo están en los
 > documentos enlazados. Este archivo **no aprueba gates ni ADR por sí mismo**.
+
+**Actualización prioritaria 18 nov 2026:** este estado **prevalece sobre las notas históricas del 11–15 nov que aparecen más abajo**. Rina y el usuario acordaron formulario de ticket con hora automática, **tag como categoría IT existente**, descripción breve, fotos/video, **urgencia sugerida por Reporter** y **prioridad oficial fijada manualmente por Support Agent asignado/Admin**; IA futura. «Luz» fue solo ejemplo, no amplía a instalaciones. La especificación anterior de una foto de 5 MB ya no representa el objetivo. Usuario reservó **Chat + React para sí**; Valeria/Tickets y Rina/Auth son propuestas por confirmar. Se eligió **etapa híbrida de desarrollo**: servicios/NATS locales en contenedores y PostgreSQL RDS/Mongo Atlas cuando el acceso privado, créditos/costo y autorización existan, con fallback de DB totalmente local. **No se crearon recursos Cloud** y hosting final Fargate/EC2 no está decidido. Ver [015](docs/015.Hybrid-Development.md), [016](docs/016.CI-Team-Workflow.md) y [G1](docs/010.G1-Contracts.md). El contexto legado siguiente documenta la evolución, no revierte estas decisiones.
 
 ## Qué es FixIt
 
@@ -14,9 +16,9 @@ asignación de agentes y chat privado asociado a cada ticket.
 
 Se busca reutilizar una sola solución para Web Development II y Cloud &
 Internet Computing, con posible alineación adicional a Software Engineering II.
-No ampliar de momento el alcance a mantenimiento de instalaciones, IA, SLA,
-adjuntos multiples o funcionalidades accesorias. La foto opcional vinculada al
-ticket es una excepcion ya incluida en el MVP. Ver [Product](docs/001.Product.md),
+No ampliar el alcance a mantenimiento de instalaciones, IA, SLA ni funciones
+accesorias. **Fotos y/o video opcionales** estan previstos como evidencia
+del ticket; cantidades y límites aún no están ratificados. Ver [Product](docs/001.Product.md),
 [Requirements](docs/002.Requirements.md) y
 [Delivery](docs/005.Delivery.md).
 
@@ -117,7 +119,9 @@ Ver [004.Cloud](docs/004.Cloud.md) y la
 
 **Actualizacion Cloud (12 nov):** usuario informa que **Marvin dio luz
 verde para continuar con la arquitectura Cloud de FixIt**. Direccion
-academica de **una VPC + una EC2** ya no esta en debate; esto **no**
+academica de **una VPC + una EC2** fue una referencia de diseño,
+**reabierta el 17 nov** ante Fargate/RDS/Atlas y el 18 nov con la etapa
+híbrida de servicios locales + bases remotas. La aprobación histórica **no**
 autoriza por si solo crear EC2, buckets, IAM ni asumir cargos.
 El [paquete intermedio de AWS, seccion 8](docs/004.Cloud.md) resume
 defaults propuestos para review del equipo: Compose en una EC2, proxy

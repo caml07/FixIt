@@ -1,0 +1,60 @@
+name: FixIt contract-first checks
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  documentation-contract:
+    name: Documentation and OpenAPI structure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Markdown and local links
+        run: node scripts/ci/check-docs.mjs
+      - name: OpenAPI structural smoke test
+        run: node scripts/ci/check-contract.mjs
+      - name: Formal OpenAPI validation (Redocly CLI 2.79.0)
+        env:
+          REDOCLY_TELEMETRY: "off"
+          REDOCLY_SUPPRESS_NOTIFICATIONS: "true"
+        run: npx --yes @redocly/cli@2.79.0 lint docs/openapi.json
+
+  app-packages:
+    name: Application packages lint / typecheck / test / build / audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check discovered apps (or report explicit SKIP)
+        run: node scripts/ci/check-apps.mjs
+
+  postgres-migration:
+    name: PostgreSQL 17 isolated migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Apply initial SQL to disposable PostgreSQL
+        env:
+          CONTAINER_ENGINE: docker
+        run: sh scripts/ci/check-migration.sh
+# No AWS/Atlas credentials, deploy, migration of real databases, or application
+# deployment jobs. App jobs activate automatically when packages are added.
