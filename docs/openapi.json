@@ -2291,7 +2291,7 @@
         ],
         "summary": "Consultar mensajes persistidos",
         "operationId": "get__api_v1_tickets__ticketId__messages",
-        "description": "El proxy dirige esta ruta a Chat; Chat consulta permiso sincronico con Tickets/Auth.",
+        "description": "El proxy dirige esta ruta a Chat; Chat consulta permiso sincronico con Tickets/Auth. Sin cursor devuelve los ultimos mensajes; cada pagina esta ordenada ascendentemente por (createdAt,id). nextCursor carga mensajes estrictamente anteriores al mas antiguo de la pagina, o es null si no quedan anteriores. OPEN devuelve historial vacio solo a actores autorizados; los estados de solo lectura conservan acceso autorizado al historial. Tras reconexion consultar desde la pagina mas reciente y cargar anteriores hasta cubrir el intervalo perdido, deduplicando por id.",
         "parameters": [
           {
             "name": "ticketId",
@@ -2310,7 +2310,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Cursor basado en createdAt e id"
+            "description": "Cursor opaco basado en (createdAt,id) para cargar mensajes estrictamente anteriores, sin solapar paginas; no concede permisos. Cursor invalido devuelve 422."
           },
           {
             "name": "limit",
@@ -2327,7 +2327,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Historial autorizado, en orden",
+            "description": "Pagina de historial autorizado en orden cronologico ascendente; sin cursor contiene los mensajes mas recientes",
             "content": {
               "application/json": {
                 "schema": {
@@ -2395,6 +2395,16 @@
           },
           "404": {
             "description": "Recurso no encontrado/no visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ticketId, cursor o limite invalidos",
             "content": {
               "application/json": {
                 "schema": {
@@ -3668,6 +3678,7 @@
       },
       "Message": {
         "type": "object",
+        "description": "Mensaje persistido y payload de chat:message. id es el mismo UUID que messageId en el ACK de chat:send. body conserva el texto plano recibido, no vacio al comprobar espacios y de maximo 2048 bytes UTF-8; el limite en bytes se valida en backend, no con maxLength de caracteres. senderId procede de la identidad verificada, nunca del payload del cliente.",
         "additionalProperties": false,
         "properties": {
           "id": {
