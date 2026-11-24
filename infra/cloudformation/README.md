@@ -1,6 +1,6 @@
 # FixIt CloudFormation preflight
 
-**Prepared locally, not deployed.** No AWS account, plan, region, credits, quota or permission has been verified. No EC2 instances. This directory demonstrates the foundation and independent Fargate smoke workload, not the integrated FixIt application.
+**Foundation deployed and verified on 2026-11-23.** See [deployment record](DEPLOYMENT-2026-11-23.md) for account preflight, commands and results. The instructions below are historical/reusable preflight procedures; do not recreate the existing stack. Smoke/runtime not deployed. No EC2 instances created. This directory does not demonstrate the integrated FixIt application.
 
 ## Templates and local checks
 
@@ -21,7 +21,7 @@ Local lint passed on 2026-11-23; this verifies template structure/schema for the
 1. Confirm instructor substitutions for VPC peering, two VMs, ICMP, S3 website and VM alarm.
 2. Check root MFA, account plan, credits, permitted region and service eligibility, quotas, existing CIDR overlap and at least two available AZs. Verify the smoke image digest before running it. Set budget alert and obtain explicit authorization for each stack/session. Budget alerts do not guarantee a hard spending cap.
 3. Prepare annual AWS Pricing Calculator estimate and short-session budget including NAT, public IPv4, Fargate (0.25 vCPU / 0.5 GiB), CloudWatch, S3/ECR and future RDS/Atlas. Review current region-specific charges.
-4. Use authorized AWS CLI v2 credentials (never root access keys). Review change sets before executing them. The commands below are instructions only and have not been run.
+4. Use authorized AWS CLI v2 credentials (never root access keys). Review change sets before executing them. For the completed foundation commands and results, see the deployment record; smoke commands remain unexecuted.
 
 ## Foundation change set (only after permission)
 
