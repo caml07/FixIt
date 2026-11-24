@@ -3,6 +3,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 export const SESSION_COOKIE = "__Host-fixit_session";
 export const TEMPORARY_SECONDS = 15 * 60;
 export const FULL_SECONDS = 8 * 60 * 60;
+export const IDLE_SECONDS = 30 * 60;
 export const TEMPORARY_PASSWORD_HOURS = 72;
 
 export function newSecret(): string {
@@ -48,14 +49,17 @@ export function cleanPassword(password: string): string {
 const COMMON_PASSWORDS = new Set([
   "password123456789", "123456789012345", "qwertyuiop123456",
   "passwordpassword", "adminadminadmin123",
+  "1234567890123456", "12345678901234567890", "qwertyuiopasdfghjkl",
+  "passwordpasswordpassword", "contraseñacontraseña", "administrator123",
 ]);
 
-export function passwordError(password: string): string | null {
+export function passwordError(password: string, blocklist: ReadonlySet<string> = new Set()): string | null {
   const normalized = cleanPassword(password);
   const length = Array.from(normalized).length;
   if (length < 15) return "La contraseña necesita al menos 15 caracteres.";
   if (Buffer.byteLength(normalized, "utf8") > 1024) return "Contraseña demasiado larga.";
-  if (COMMON_PASSWORDS.has(normalized.toLowerCase())) return "Contraseña demasiado conocida.";
+  const candidate = normalized.toLowerCase();
+  if (COMMON_PASSWORDS.has(candidate) || blocklist.has(candidate)) return "Contraseña demasiado conocida.";
   return null;
 }
 

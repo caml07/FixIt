@@ -16,6 +16,8 @@ test("personal passwords follow the minimum length and Unicode rules", () => {
   assert.equal(passwordError("ñ".repeat(64)), null);
   assert.equal(cleanPassword("n\u0303"), "ñ");
   assert.notEqual(passwordError("passwordpassword"), null);
+  assert.notEqual(passwordError("1234567890123456"), null);
+  assert.notEqual(passwordError("compromised test phrase", new Set(["compromised test phrase"])), null);
 });
 
 test("session cookies contain an opaque secret and security attributes", () => {

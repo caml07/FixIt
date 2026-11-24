@@ -8,7 +8,7 @@ import { Prisma } from "../../../generated/prisma/client.ts";
 import type { AuthDatabase } from "./db.ts";
 import {
   clearSessionCookie, cleanPassword, csrfToken, equalsSecret, expiresAtHours,
-  FULL_SECONDS, newSecret, passwordError, readSessionCookie, setSessionCookie,
+  FULL_SECONDS, IDLE_SECONDS, newSecret, passwordError, readSessionCookie, setSessionCookie,
   TEMPORARY_PASSWORD_HOURS, TEMPORARY_SECONDS, tokenHash,
 } from "./security.ts";
 
@@ -25,6 +25,8 @@ type Options = {
   publicOrigin: string;
   csrfKey: string;
   serviceTokens: readonly [string, string];
+  passwordBlocklist?: ReadonlySet<string>;
+  sessionTimeouts?: { full: number; idle: number; temporary: number };
 };
 
 const credentialOptions = { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
@@ -64,12 +66,13 @@ function isKnownUniqueError(error: unknown): boolean {
 
 export function createAuthApp(options: Options) {
   const { database, publicOrigin, csrfKey, serviceTokens } = options;
+  const timeouts = options.sessionTimeouts ?? { full: FULL_SECONDS, idle: IDLE_SECONDS, temporary: TEMPORARY_SECONDS };
   const app = express();
   app.disable("x-powered-by");
   // The API is reached through the private reverse proxy / Cloudflare Tunnel.
   // Do not trust arbitrary X-Forwarded-For; do not use wildcard CORS.
   app.use(helmet());
-  app.use((req, res, next) => {
+  app.use((_req, res, next) => {
     res.locals.requestId = randomUUID();
     next();
   });
@@ -83,6 +86,11 @@ export function createAuthApp(options: Options) {
     windowMs: 15 * 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false,
     handler: (_req, res) => sendError(res, 429, "RATE_LIMITED", "Demasiadas operaciones."),
   });
+  const activationLimiter = rateLimit({
+    windowMs: 15 * 60_000, limit: 20, standardHeaders: "draft-8", legacyHeaders: false,
+    keyGenerator: (_req, res) => String(res.locals.activationSession.user.id),
+    handler: (_req, res) => sendError(res, 429, "RATE_LIMITED", "Demasiados intentos."),
+  });
 
   const fakePasswordHash = argon2.hash(randomBytes(32).toString("base64url"), credentialOptions);
   function allowedOrigin(req: Request): boolean {
@@ -90,15 +98,15 @@ export function createAuthApp(options: Options) {
     return origin === publicOrigin && req.get("Sec-Fetch-Site") !== "cross-site";
   }
 
-  async function sessionFor(req: Request) {
-    const token = readSessionCookie(req.get("Cookie"));
-    if (!token) return null;
-    const hash = tokenHash(token);
+  async function activeSession(token: string, fullOnly = false) {
     const found = await database.session.findUnique({
-      where: { tokenHash: hash }, include: { user: true },
+      where: { tokenHash: tokenHash(token) }, include: { user: true },
     });
     const now = Date.now();
+    const cutoff = new Date(now - timeouts.idle * 1000);
     if (!found || found.revokedAt || found.expiresAt.getTime() <= now) return null;
+    if ((found.lastSeenAt ?? found.createdAt) <= cutoff) return null;
+    if (fullOnly && found.scope !== "FULL") return null;
     if (found.scope === "FULL" && found.user.accountStatus !== "ACTIVE") return null;
     if (found.scope === "PASSWORD_CHANGE_ONLY" &&
       (found.user.accountStatus !== "PENDING_PASSWORD_CHANGE" ||
@@ -106,7 +114,18 @@ export function createAuthApp(options: Options) {
       return null;
     }
     if (found.scope !== "FULL" && found.scope !== "PASSWORD_CHANGE_ONLY") return null;
+    // Recheck the persisted deadline and revocation before renewing activity.
+    const touched = await database.session.updateMany({
+      where: { id: found.id, revokedAt: null, expiresAt: { gt: new Date(now) },
+        OR: [{ lastSeenAt: { gt: cutoff } }, { lastSeenAt: null, createdAt: { gt: cutoff } }] },
+      data: { lastSeenAt: new Date(now) },
+    });
+    if (touched.count !== 1) return null;
     return found;
+  }
+  async function sessionFor(req: Request) {
+    const token = readSessionCookie(req.get("Cookie"));
+    return token ? activeSession(token) : null;
   }
   type Session = NonNullable<Awaited<ReturnType<typeof sessionFor>>>;
 
@@ -173,13 +192,13 @@ export function createAuthApp(options: Options) {
       return sendError(res, 401, "INVALID_CREDENTIALS", "Credenciales incorrectas.");
     }
     const limited = user.accountStatus === "PENDING_PASSWORD_CHANGE";
-    const lifetime = limited ? TEMPORARY_SECONDS : FULL_SECONDS;
+    const lifetime = limited ? timeouts.temporary : timeouts.full;
     const token = newSecret();
     await database.session.create({
       data: {
         tokenHash: tokenHash(token), userId: user.id,
         scope: limited ? "PASSWORD_CHANGE_ONLY" : "FULL",
-        expiresAt: new Date(Date.now() + lifetime * 1000),
+        expiresAt: new Date(Date.now() + lifetime * 1000), lastSeenAt: new Date(),
       },
     });
     res.setHeader("Set-Cookie", setSessionCookie(token, lifetime));
@@ -215,15 +234,19 @@ export function createAuthApp(options: Options) {
     res.status(204).end();
   });
 
-  app.post("/api/v1/auth/password/activate", async (req, res) => {
+  app.post("/api/v1/auth/password/activate", async (req, res, next) => {
     const session = await signedIn(req, res);
     if (!session || !mutatingRequest(req, res, session)) return;
     if (session.scope !== "PASSWORD_CHANGE_ONLY") {
       return sendError(res, 403, "FORBIDDEN", "Se requiere una sesión de activación.");
     }
+    res.locals.activationSession = session;
+    next();
+  }, activationLimiter, async (req, res) => {
+    const session: Session = res.locals.activationSession;
     const parsed = activationInput.safeParse(req.body);
     if (!parsed.success) return sendError(res, 422, "INVALID_INPUT", "Contraseña inválida.");
-    const reason = passwordError(parsed.data.newPassword);
+    const reason = passwordError(parsed.data.newPassword, options.passwordBlocklist);
     if (reason) return sendError(res, 422, "WEAK_PASSWORD", reason);
     const currentOk = await argon2.verify(session.user.passwordHash, cleanPassword(parsed.data.currentPassword));
     if (!currentOk || cleanPassword(parsed.data.newPassword) === cleanPassword(parsed.data.currentPassword)) {
@@ -401,11 +424,8 @@ export function createAuthApp(options: Options) {
     if (!parsed.success) return sendError(res, 422, "INVALID_INPUT", "Formato de sesión inválido.");
     const { sessionToken } = parsed.data;
     if (!/^[A-Za-z0-9_-]{43}$/.test(sessionToken)) return sendData(res, { active: false });
-    const found = await database.session.findUnique({
-      where: { tokenHash: tokenHash(sessionToken) }, include: { user: true },
-    });
-    if (!found || found.revokedAt || found.expiresAt.getTime() <= Date.now() ||
-        found.scope !== "FULL" || found.user.accountStatus !== "ACTIVE") {
+    const found = await activeSession(sessionToken, true);
+    if (!found) {
       return sendData(res, { active: false });
     }
     return sendData(res, {

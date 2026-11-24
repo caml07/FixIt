@@ -6,6 +6,7 @@ import { test } from "node:test";
 import argon2 from "argon2";
 import { createAuthApp } from "../src/app.ts";
 import { openAuthDatabase } from "../src/db.ts";
+import { tokenHash } from "../src/security.ts";
 
 const dbUrl = process.env.FIXIT_TEST_DB_URL;
 const origin = "https://fixit.example.invalid";
@@ -146,6 +147,18 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     assert.equal(introspection.data.data.subject.userId, teacherId);
     assert.equal(introspection.data.data.subject.role, "REPORTER");
 
+    // Age a real session without waiting for the idle timeout.
+    const idleLogin = await login(teacherEmail, newTeacherPassword);
+    assert.equal(idleLogin.response.status, 200);
+    const idleToken = idleLogin.cookie.split("=")[1];
+    await db.session.updateMany({ where: { userId: teacherId, tokenHash: tokenHash(idleToken) },
+      data: { lastSeenAt: new Date(Date.now() - 31 * 60_000) } });
+    assert.equal((await request("/api/v1/auth/me", { cookie: idleLogin.cookie })).response.status, 401);
+    const idleIntrospection = await request("/internal/v1/sessions/introspect", {
+      method: "POST", requestOrigin: null, bearer: serviceTokenB, body: { sessionToken: idleToken },
+    });
+    assert.equal(idleIntrospection.data.data.active, false);
+
     const unauthorizedIntrospection = await request("/internal/v1/sessions/introspect", {
       method: "POST", requestOrigin: null, bearer: "invalid-credential",
       body: { sessionToken: teacherToken },
@@ -239,6 +252,23 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
       headers: { Cookie: adminCookie, Origin: "https://untrusted.invalid" },
     });
     assert.equal(crossOrigin.headers.get("access-control-allow-origin"), null);
+
+    const retryEmail = "retry." + randomUUID() + "@invalid.example";
+    const retryUser = await request("/api/v1/admin/users", {
+      method: "POST", cookie: adminCookie, csrf: adminCsrf,
+      body: { ...payload, email: retryEmail },
+    });
+    assert.equal(retryUser.response.status, 201);
+    const retryLogin = await login(retryEmail, retryUser.data.data.temporaryPassword);
+    assert.equal(retryLogin.response.status, 200);
+    const retryCsrf = await csrf(retryLogin.cookie);
+    for (let i = 0; i < 21; i++) {
+      const attempt = await request("/api/v1/auth/password/activate", {
+        method: "POST", cookie: retryLogin.cookie, csrf: retryCsrf,
+        body: { currentPassword: "invalid", newPassword: "short" },
+      });
+      assert.equal(attempt.response.status, i < 20 ? 422 : 429);
+    }
 
     let limited = false;
     for (let i = 0; i < 25; i++) {

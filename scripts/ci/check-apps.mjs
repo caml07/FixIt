@@ -1,17 +1,14 @@
 #!/usr/bin/env node
-// Opt-in application CI: discovers actual package.json files under apps/* and services/*.
+// Validate the root package and any independent packages under apps/* and services/*.
 // No packages on docs-only dev => explicit SKIP. Once a package is created it must be tested.
 import { readdirSync, existsSync, readFileSync, statSync } from "node:fs";
 import { resolve, dirname, relative, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-if (existsSync(join(root, "package.json"))) {
-  console.error("ERROR: Root package.json is not checked by application CI. Move the package under services/* or apps/*, or explicitly update CI to validate it.");
-  process.exit(1);
-}
 const packages = [];
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+if (existsSync(join(root, "package.json"))) packages.push(root);
 for (const parent of ["services", "apps"]) {
   const dir = join(root, parent);
   if (!existsSync(dir)) continue;
@@ -23,12 +20,12 @@ for (const parent of ["services", "apps"]) {
   }
 }
 if (!packages.length) {
-  console.log("SKIP: No application packages found under services/* or apps/*; dev is documentation-only.");
+  console.log("SKIP: No root or independent application packages found; dev is documentation-only.");
   process.exit(0);
 }
 const required = ["lint", "typecheck", "test", "build"];
 for (const dir of packages) {
-  const name = relative(root, dir);
+  const name = relative(root, dir) || ".";
   const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
   for (const script of required) {
     if (!pkg.scripts?.[script]) {

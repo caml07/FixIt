@@ -1,5 +1,7 @@
 import "dotenv/config";
+import { readFileSync } from "node:fs";
 import { z } from "zod";
+import { cleanPassword, FULL_SECONDS, IDLE_SECONDS, TEMPORARY_SECONDS } from "./security.ts";
 
 const schema = z.object({
   AUTH_DATABASE_URL: z.string().min(1),
@@ -8,6 +10,10 @@ const schema = z.object({
   AUTH_TICKETS_SERVICE_TOKEN: z.string().min(32),
   AUTH_CHAT_SERVICE_TOKEN: z.string().min(32),
   AUTH_PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+  AUTH_FULL_SESSION_SECONDS: z.coerce.number().int().min(1).max(86400).default(FULL_SECONDS),
+  AUTH_IDLE_SESSION_SECONDS: z.coerce.number().int().min(1).max(86400).default(IDLE_SECONDS),
+  AUTH_TEMPORARY_SESSION_SECONDS: z.coerce.number().int().min(1).max(3600).default(TEMPORARY_SECONDS),
+  AUTH_PASSWORD_BLOCKLIST_FILE: z.string().min(1).optional(),
 });
 
 export function readAuthConfig() {
@@ -18,4 +24,14 @@ export function readAuthConfig() {
     throw new Error("Distinct internal service credentials are required.");
   }
   return config;
+}
+
+export function readPasswordBlocklist(path: string | undefined): ReadonlySet<string> {
+  if (!path) {
+    if (process.env.NODE_ENV === "production") throw new Error("AUTH_PASSWORD_BLOCKLIST_FILE required in production.");
+    return new Set();
+  }
+  const entries = new Set(readFileSync(path, "utf8").split(/\r?\n/).filter(Boolean).map((entry) => cleanPassword(entry).toLowerCase()));
+  if (entries.size === 0) throw new Error("Password blocklist is empty.");
+  return entries;
 }
