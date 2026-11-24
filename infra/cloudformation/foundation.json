@@ -1,0 +1,550 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "FixIt foundation: no NAT, compute, DB or public IP; no application deployed.",
+  "Resources": {
+    "Vpc": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.20.0.0/16",
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-vpc"
+            }
+          }
+        ]
+      }
+    },
+    "InternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-igw"
+            }
+          }
+        ]
+      }
+    },
+    "GatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "InternetGatewayId": {
+          "Ref": "InternetGateway"
+        }
+      }
+    },
+    "PublicSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "CidrBlock": "10.20.1.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-PublicSubnet"
+            }
+          }
+        ]
+      }
+    },
+    "PublicSubnetAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "PublicSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "PublicRoutes"
+        }
+      }
+    },
+    "AppSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "CidrBlock": "10.20.10.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-AppSubnet"
+            }
+          }
+        ]
+      }
+    },
+    "AppSubnetAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "AppSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "AppRoutes"
+        }
+      }
+    },
+    "DataSubnetA": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "CidrBlock": "10.20.20.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-DataSubnetA"
+            }
+          }
+        ]
+      }
+    },
+    "DataSubnetAAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "DataSubnetA"
+        },
+        "RouteTableId": {
+          "Ref": "DataRoutes"
+        }
+      }
+    },
+    "DataSubnetB": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "CidrBlock": "10.20.21.0/24",
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-DataSubnetB"
+            }
+          }
+        ]
+      }
+    },
+    "DataSubnetBAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "DataSubnetB"
+        },
+        "RouteTableId": {
+          "Ref": "DataRoutes"
+        }
+      }
+    },
+    "PublicRoutes": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-PublicRoutes"
+            }
+          }
+        ]
+      }
+    },
+    "AppRoutes": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-AppRoutes"
+            }
+          }
+        ]
+      }
+    },
+    "DataRoutes": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}-DataRoutes"
+            }
+          }
+        ]
+      }
+    },
+    "PublicDefault": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PublicRoutes"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "InternetGateway"
+        }
+      },
+      "DependsOn": "GatewayAttachment"
+    },
+    "SmokeSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Outbound-only smoke task; no inbound rules",
+        "VpcId": {
+          "Ref": "Vpc"
+        },
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "Cluster": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterSettings": [
+          {
+            "Name": "containerInsights",
+            "Value": "disabled"
+          }
+        ]
+      }
+    },
+    "AuthRepository": {
+      "Type": "AWS::ECR::Repository",
+      "Properties": {
+        "ImageTagMutability": "IMMUTABLE",
+        "ImageScanningConfiguration": {
+          "ScanOnPush": true
+        },
+        "EncryptionConfiguration": {
+          "EncryptionType": "AES256"
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "TicketsRepository": {
+      "Type": "AWS::ECR::Repository",
+      "Properties": {
+        "ImageTagMutability": "IMMUTABLE",
+        "ImageScanningConfiguration": {
+          "ScanOnPush": true
+        },
+        "EncryptionConfiguration": {
+          "EncryptionType": "AES256"
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "ChatRepository": {
+      "Type": "AWS::ECR::Repository",
+      "Properties": {
+        "ImageTagMutability": "IMMUTABLE",
+        "ImageScanningConfiguration": {
+          "ScanOnPush": true
+        },
+        "EncryptionConfiguration": {
+          "EncryptionType": "AES256"
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "EdgeRepository": {
+      "Type": "AWS::ECR::Repository",
+      "Properties": {
+        "ImageTagMutability": "IMMUTABLE",
+        "ImageScanningConfiguration": {
+          "ScanOnPush": true
+        },
+        "EncryptionConfiguration": {
+          "EncryptionType": "AES256"
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "ReleaseBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        }
+      },
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain"
+    },
+    "ReleaseBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "ReleaseBucket"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "DenyInsecureTransport",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ReleaseBucket",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${ReleaseBucket.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "VpcId": {
+      "Value": {
+        "Ref": "Vpc"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-VpcId"
+        }
+      }
+    },
+    "PublicSubnetId": {
+      "Value": {
+        "Ref": "PublicSubnet"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-PublicSubnetId"
+        }
+      }
+    },
+    "AppSubnetId": {
+      "Value": {
+        "Ref": "AppSubnet"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-AppSubnetId"
+        }
+      }
+    },
+    "AppRouteTableId": {
+      "Value": {
+        "Ref": "AppRoutes"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-AppRouteTableId"
+        }
+      }
+    },
+    "DataSubnetAId": {
+      "Value": {
+        "Ref": "DataSubnetA"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-DataSubnetAId"
+        }
+      }
+    },
+    "DataSubnetBId": {
+      "Value": {
+        "Ref": "DataSubnetB"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-DataSubnetBId"
+        }
+      }
+    },
+    "SmokeSecurityGroupId": {
+      "Value": {
+        "Ref": "SmokeSecurityGroup"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-SmokeSecurityGroupId"
+        }
+      }
+    },
+    "ClusterName": {
+      "Value": {
+        "Ref": "Cluster"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-ClusterName"
+        }
+      }
+    },
+    "ReleaseBucketName": {
+      "Value": {
+        "Ref": "ReleaseBucket"
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-ReleaseBucketName"
+        }
+      }
+    },
+    "AuthRepositoryUri": {
+      "Value": {
+        "Fn::GetAtt": [
+          "AuthRepository",
+          "RepositoryUri"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-AuthRepositoryUri"
+        }
+      }
+    },
+    "TicketsRepositoryUri": {
+      "Value": {
+        "Fn::GetAtt": [
+          "TicketsRepository",
+          "RepositoryUri"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-TicketsRepositoryUri"
+        }
+      }
+    },
+    "ChatRepositoryUri": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ChatRepository",
+          "RepositoryUri"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-ChatRepositoryUri"
+        }
+      }
+    },
+    "EdgeRepositoryUri": {
+      "Value": {
+        "Fn::GetAtt": [
+          "EdgeRepository",
+          "RepositoryUri"
+        ]
+      },
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-EdgeRepositoryUri"
+        }
+      }
+    }
+  }
+}
