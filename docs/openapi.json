@@ -320,6 +320,16 @@
               }
             }
           },
+          "403": {
+            "description": "Origin o token CSRF invalido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "503": {
             "description": "Dependencia indispensable indisponible",
             "content": {
@@ -759,6 +769,16 @@
           },
           "422": {
             "description": "Paginacion invalida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de intentos administrativos alcanzado",
             "content": {
               "application/json": {
                 "schema": {
