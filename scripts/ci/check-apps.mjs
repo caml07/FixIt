@@ -7,6 +7,10 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+if (existsSync(join(root, "package.json"))) {
+  console.error("ERROR: Root package.json is not checked by application CI. Move the package under services/* or apps/*, or explicitly update CI to validate it.");
+  process.exit(1);
+}
 const packages = [];
 for (const parent of ["services", "apps"]) {
   const dir = join(root, parent);
