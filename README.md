@@ -26,6 +26,8 @@ No hacer commits, push, merge ni crear recursos AWS sin autorización expresa. P
 
 ## Implementación de referencia (fuera de `dev`)
 
+En el checkout de trabajo de `feat/auth`, consultar el [runbook de Auth](services/auth/README.md) para pruebas locales, configuracion y seguridad.
+
 La rama `prototype/auth-g4` conserva el servicio Auth con Express/Prisma, la CLI de bootstrap, scripts SQL para roles y sus pruebas PostgreSQL. **No se ejecuta desde esta rama documental** y no equivale al MVP. Continuar el trabajo de código desde una rama específica cuando los contratos G1 estén revisados.
 
 ## Equipo y fuentes originales
