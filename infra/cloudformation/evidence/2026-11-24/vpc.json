@@ -1,0 +1,35 @@
+{
+  "Vpcs": [
+    {
+      "CidrBlock": "10.20.0.0/16",
+      "State": "available",
+      "IsDefault": false,
+      "Tags": [
+        {
+          "Key": "aws:cloudformation:stack-id",
+          "Value": "[REDACTED_STACK_ARN]"
+        },
+        {
+          "Key": "Name",
+          "Value": "fixit-foundation-vpc"
+        },
+        {
+          "Key": "Project",
+          "Value": "FixIt"
+        },
+        {
+          "Key": "aws:cloudformation:stack-name",
+          "Value": "fixit-foundation"
+        },
+        {
+          "Key": "Environment",
+          "Value": "academic-pilot"
+        },
+        {
+          "Key": "aws:cloudformation:logical-id",
+          "Value": "Vpc"
+        }
+      ]
+    }
+  ]
+}

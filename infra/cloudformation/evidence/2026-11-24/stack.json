@@ -1,0 +1,20 @@
+{
+  "Stacks": [
+    {
+      "StackName": "fixit-foundation",
+      "CreationTime": "2026-11-24T04:23:42.605000+00:00",
+      "StackStatus": "CREATE_COMPLETE",
+      "Description": "FixIt foundation: no NAT, compute, DB or public IP; no application deployed.",
+      "Tags": [
+        {
+          "Key": "Project",
+          "Value": "FixIt"
+        },
+        {
+          "Key": "Environment",
+          "Value": "academic-pilot"
+        }
+      ]
+    }
+  ]
+}

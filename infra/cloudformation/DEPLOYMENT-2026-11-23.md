@@ -2,6 +2,10 @@
 
 Status: deployed and verified. Scope: authorized foundation only, AWS us-east-1. No runtime stack, database, NAT, IAM user or credentials created. This is sanitized CLI evidence, not screenshots or a complete account audit.
 
+## Evidence retrieved November 24
+
+See [AWS CLI evidence (2026-11-24)](evidence/2026-11-24/README.md) for the 77 historical stack events and current sanitized JSON outputs, with verified archive transfer. No new resources were created.
+
 ## Source and integrity
 
 Source: dev commit 6ec654f8e662751484b8236368994a89557d44ee, infra/cloudformation/foundation.json.

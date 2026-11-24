@@ -1,0 +1,40 @@
+{
+  "repositories": [
+    {
+      "imageTagMutability": "IMMUTABLE",
+      "imageScanningConfiguration": {
+        "scanOnPush": true
+      },
+      "encryptionConfiguration": {
+        "encryptionType": "AES256"
+      }
+    },
+    {
+      "imageTagMutability": "IMMUTABLE",
+      "imageScanningConfiguration": {
+        "scanOnPush": true
+      },
+      "encryptionConfiguration": {
+        "encryptionType": "AES256"
+      }
+    },
+    {
+      "imageTagMutability": "IMMUTABLE",
+      "imageScanningConfiguration": {
+        "scanOnPush": true
+      },
+      "encryptionConfiguration": {
+        "encryptionType": "AES256"
+      }
+    },
+    {
+      "imageTagMutability": "IMMUTABLE",
+      "imageScanningConfiguration": {
+        "scanOnPush": true
+      },
+      "encryptionConfiguration": {
+        "encryptionType": "AES256"
+      }
+    }
+  ]
+}

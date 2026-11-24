@@ -1,0 +1,11 @@
+{
+  "clusters": [
+    {
+      "status": "ACTIVE",
+      "runningTasksCount": 0,
+      "pendingTasksCount": 0,
+      "activeServicesCount": 0,
+      "settings": []
+    }
+  ]
+}
