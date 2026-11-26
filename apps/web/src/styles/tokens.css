@@ -1,0 +1,103 @@
+:root {
+  font-family: "Manrope Variable", "Manrope", sans-serif;
+  color: #213129;
+  background: #f4f3ed;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --canvas: #f4f3ed;
+  --surface: #fffefa;
+  --surface-soft: #f9f8f3;
+  --surface-muted: #f0f1eb;
+  --ink: #213129;
+  --ink-soft: #4d5d52;
+  --muted: #7c887e;
+  --muted-light: #9aa39a;
+  --line: #e4e7df;
+  --line-strong: #d7ddd3;
+  --forest: #20382e;
+  --forest-raised: #2b4a3b;
+  --forest-soft: #e7eee7;
+  --sage: #dfe8de;
+  --sage-strong: #cbd9ca;
+  --accent: #477254;
+  --accent-hover: #365f43;
+  --warm: #f0eadd;
+  --clay: #a96648;
+  --shadow-soft: 0 10px 28px rgba(32, 56, 46, 0.075);
+  --shadow-menu: 0 16px 38px rgba(28, 43, 33, 0.14);
+  --radius-sm: 7px;
+  --radius-md: 11px;
+  --radius-lg: 15px;
+  --radius-xl: 20px;
+  --sidebar-width: 232px;
+  --topbar-height: 64px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  color: inherit;
+}
+a {
+  color: inherit;
+}
+
+::selection {
+  background: #dbe8da;
+  color: #1d3428;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(71, 114, 84, 0.42);
+  outline-offset: 2px;
+}
+
+.sr-only,
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mobile-only {
+  display: none !important;
+}
