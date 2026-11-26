@@ -40,8 +40,10 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Check discovered apps (or report explicit SKIP)
+        env:
+          CONTAINER_ENGINE: docker
         run: node scripts/ci/check-apps.mjs
 
   postgres-migration:
