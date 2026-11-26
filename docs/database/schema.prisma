@@ -31,7 +31,7 @@ model User {
   reportedTickets    SupportTicket[]    @relation("Reporters")
   assignedTickets    SupportTicket[]    @relation("Assignees")
   timelineEntries    TicketTimeline[]   @relation("TimelineActors")
-  uploadedPhotos     TicketAttachment[] @relation("AttachmentUploaders")
+  uploadedAttachments TicketAttachment[] @relation("AttachmentUploaders")
 
   @@map("users")
   @@schema("auth")
@@ -90,6 +90,8 @@ model SupportTicket {
   description  String
   location     String?   @db.VarChar(160)
   equipment    String?   @db.VarChar(160)
+  reporterUrgency String  @map("reporter_urgency") @db.VarChar(16)
+  effectivePriority String? @map("effective_priority") @db.VarChar(16)
   status       String    @default("OPEN")
   version      Int       @default(1)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -99,7 +101,7 @@ model SupportTicket {
   assignee   User?             @relation("Assignees", fields: [assigneeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   category   Category          @relation(fields: [categoryCode], references: [code], onDelete: Restrict, onUpdate: NoAction)
   timeline   TicketTimeline[]
-  attachment TicketAttachment?
+  attachments TicketAttachment[]
 
   @@index([reporterId, status], map: "support_tickets_reporter_status_idx")
   @@index([assigneeId, status], map: "support_tickets_assignee_status_idx")
@@ -115,6 +117,10 @@ model TicketTimeline {
   ticketVersion Int      @map("ticket_version")
   fromStatus    String?  @map("from_status")
   toStatus      String?  @map("to_status")
+  fromUrgency   String?  @map("from_urgency") @db.VarChar(16)
+  toUrgency     String?  @map("to_urgency") @db.VarChar(16)
+  fromPriority  String?  @map("from_priority") @db.VarChar(16)
+  toPriority    String?  @map("to_priority") @db.VarChar(16)
   reason        String?
   recordedAt    DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
 
@@ -146,10 +152,10 @@ model Outbox {
 
 model TicketAttachment {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ticketId    String   @unique @map("ticket_id") @db.Uuid
+  ticketId    String   @map("ticket_id") @db.Uuid
   uploadedBy  String   @map("uploaded_by") @db.Uuid
   storageKey  String   @unique @map("storage_key")
-  contentType String   @map("content_type")
+  contentType String   @map("content_type") @db.VarChar(80)
   sizeBytes   Int      @map("size_bytes")
   sha256Hex   String   @map("sha256_hex") @db.Char(64)
   uploadedAt  DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
@@ -157,6 +163,7 @@ model TicketAttachment {
   ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   uploader User          @relation("AttachmentUploaders", fields: [uploadedBy], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
+  @@index([ticketId, uploadedAt, id], map: "ticket_attachments_ticket_uploaded_idx")
   @@map("ticket_attachments")
   @@schema("tickets")
 }
