@@ -1,0 +1,55 @@
+name: fixit-chat-local
+services:
+  mongo:
+    image: docker.io/library/mongo:8.0
+    networks: [private]
+    volumes: [chat-mongo:/data/db]
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --eval, "quit(db.runCommand({ping:1}).ok ? 0 : 1)"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  fixtures:
+    build: ./services/chat
+    command: [node, dist/local/main.js]
+    environment:
+      FIXIT_FIXTURES: "1"
+      CHAT_SERVICE_TOKEN: fixture-service-not-production
+    networks: [private]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:4001/internal/v1/sessions/introspect',{method:'POST',headers:{Authorization:'Bearer '+process.env.CHAT_SERVICE_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({sessionToken:'fixture-reporter'})}).then(r=>{if(!r.ok)process.exit(1)})"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  chat:
+    build: ./services/chat
+    environment:
+      MONGO_URI: mongodb://mongo:27017/chat
+      AUTH_URL: http://fixtures:4001
+      TICKETS_URL: http://fixtures:4001
+      CHAT_SERVICE_TOKEN: fixture-service-not-production
+      PUBLIC_ORIGIN: https://localhost:8443
+    networks: [private]
+    depends_on:
+      mongo: {condition: service_healthy}
+      fixtures: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:4000/health').then(r=>{if(!r.ok)process.exit(1)})"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  proxy:
+    image: docker.io/library/caddy:2.10-alpine
+    ports: ["127.0.0.1:8443:8443"]
+    networks: [private, edge]
+    volumes:
+      - ./services/chat/local/Caddyfile:/etc/caddy/Caddyfile:ro,Z
+      - chat-caddy:/data
+    depends_on:
+      chat: {condition: service_healthy}
+networks:
+  private: {internal: true}
+  edge: {}
+volumes:
+  chat-mongo: {}
+  chat-caddy: {}

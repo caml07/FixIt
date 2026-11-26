@@ -1,0 +1,17 @@
+{
+  auto_https disable_redirects
+}
+https://localhost:8443 {
+  tls internal
+  @demo path /__dev/*
+  handle @demo {
+    reverse_proxy fixtures:4001
+  }
+  @chat path /api/v1/tickets/*/messages /socket.io/* /health
+  handle @chat {
+    reverse_proxy chat:4000
+  }
+  handle {
+    respond 404
+  }
+}
