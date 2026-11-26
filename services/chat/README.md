@@ -1,6 +1,6 @@
 # Chat local
 
-Implementacion del [contrato Chat](../../docs/010.G1-Contracts.md#7-contrato-socketio--chat) en la rama `feat/chat-ui`. HTTP de historial y Socket.IO usan Mongo real. Auth/Tickets son simuladores con datos ficticios, sin acceso a sus tablas ni codigo de sus modulos.
+Implementacion del [contrato Chat](../../docs/010.G1-Contracts.md#7-contrato-socketio--chat) en la rama `feat/chat`. HTTP de historial y Socket.IO usan Mongo real. Auth/Tickets son simuladores con datos ficticios, sin acceso a sus tablas ni codigo de sus modulos.
 
 ## Arranque en contenedores
 
@@ -47,6 +47,8 @@ Estas cadenas y el bearer `fixture-service-not-production` son fixtures publicos
 
 ## Pruebas
 
+18 pruebas de integración locales verificadas antes de separar ramas. No se afirma integración de producción.
+
 Desde `services/chat`:
 
 ```sh
@@ -73,4 +75,4 @@ Con Docker: `docker compose -f compose.chat.yml down`. Ambos conservan volumenes
 
 ## Pendiente de integracion
 
-Auth y Tickets reales, emision de cookies y login/CSRF del navegador, UI React con Impeccable, consumidor JetStream/outbox y recuperacion de su proyeccion. Chat textual no necesita NATS para persistir o autorizar; esta entrega no implementa `ticket:updated` ni declara G1/G3/G4 PASS. Contadores en memoria, fixtures y CA local son para desarrollo. No se hicieron deploy ni cambios Cloud.
+Auth y Tickets reales, emision de cookies y login/CSRF del navegador, integración definitiva con la UI de feat/ui, consumidor JetStream/outbox y recuperacion de su proyeccion. Chat textual no necesita NATS para persistir o autorizar; esta entrega no implementa `ticket:updated` ni declara G1/G3/G4 PASS. Contadores en memoria, fixtures y CA local son para desarrollo. No se hicieron deploy ni cambios Cloud.
