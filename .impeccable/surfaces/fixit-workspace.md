@@ -215,7 +215,7 @@ Contract baseline **0.2.0 was frozen by the project owner on 26 November 2026** 
 4. **Category labels:** render the existing category catalog from the API and confirm final English labels against seeded codes.
 5. **Accessibility target:** keyboard, labels, focus, contrast, and responsive behavior are required; formal WCAG conformance level remains undecided.
 
-Do not implement a control that submits unsupported fields. Changes after 0.2.0 require a new coordinated contract version. The 0.2.0 contract commit must precede backend controllers; UI can use typed fixtures while the commit is pending.
+Do not implement a control that submits unsupported fields. Changes after 0.2.0 require a new coordinated contract version. The 0.2.0 contract is recorded in dev before implementation commits. UI uses typed fixtures until service integration is authorized.
 
 ## 11. Direction contract
 

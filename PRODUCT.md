@@ -50,7 +50,7 @@ FixIt is a ticket-first IT Help Desk. Conversation belongs to an incident instea
 - Ticket activity and system events remain auditable and are distinct from human chat messages.
 - In-app updates cover new tickets for Admin, assignment or reassignment, status changes, and new messages for authorized participants. Email, push, and a separate notification-history center are out of scope.
 - The current API supports ticket scope, status filtering, cursor pagination, and creation-time sorting. Full-text search and advanced category filters are not currently part of the contract.
-- Contract baseline 0.2.0, including ticket urgency, official priority, multi-file evidence, and the Chat protocol, was frozen by the user on 26 Nov for implementation. Redocly, Prisma validation, disposable PostgreSQL migration/deploy/diff checks pass. Technical review by Valeria/Rina and the baseline commit remain pending; no application behavior is implemented and G1 is not PASS.
+- Contract baseline 0.2.0, including ticket urgency, official priority, multi-file evidence, and the Chat protocol, was frozen by the user on 26 Nov for implementation. Redocly, Prisma validation, disposable PostgreSQL migration/deploy/diff checks pass. Technical review remains pending; baseline is recorded in dev. Chat and React are developed separately; G1 is not PASS.
 
 ## Brand Commitments
 
