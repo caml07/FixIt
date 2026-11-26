@@ -5,7 +5,7 @@ import { join, resolve, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const targets = ["README.md", "AGENTS.md", "CLAUDE.md", "CONTEXT.md", "docs/000.INDEX.md", "docs/002.Requirements.md", "docs/010.G1-Contracts.md", "docs/openapi.json", "docs/database/schema.prisma", "docs/015.Hybrid-Development.md", "docs/016.CI-Team-Workflow.md", ".agents/skills/fixit-contract-first/SKILL.md", ".agents/skills/fixit-ci-handoff/SKILL.md", ".github/workflows/ci.yml"];
+const targets = ["README.md", "AGENTS.md", "CLAUDE.md", "CONTEXT.md", "docs/000.INDEX.md", "docs/002.Requirements.md", "docs/010.G1-Contracts.md", "docs/openapi.json", "docs/database/schema.prisma", "docs/database/migrations/20261126000100_ticket_intake_and_evidence/migration.sql", "docs/015.Hybrid-Development.md", "docs/016.CI-Team-Workflow.md", ".agents/skills/fixit-contract-first/SKILL.md", ".agents/skills/fixit-ci-handoff/SKILL.md", ".github/workflows/ci.yml"];
 let errors = [];
 for (const file of targets) {
   if (!existsSync(join(root, file))) errors.push(`Required file missing: ${file}`);

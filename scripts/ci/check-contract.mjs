@@ -45,4 +45,4 @@ if (errors.length) {
   process.exit(1);
 }
 console.log(`PASS: OpenAPI ${api.openapi}, ${Object.keys(api.paths).length} paths, ${ops} operations; references structurally resolved.`);
-console.log("NOTICE: This is not full OpenAPI linting. G1 contract changes from Rina are still pending in JSON/SQL.");
+console.log("NOTICE: Structural check only. Run Redocly lint and SQL/Prisma validation separately; team review and application tests are independent gates.");
