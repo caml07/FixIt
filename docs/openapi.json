@@ -2424,7 +2424,17 @@
             }
           },
           "422": {
-            "description": "ticketId, cursor o limite invalidos",
+            "description": "VALIDATION_ERROR: ticketId, cursor o limite invalidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: limite inicial de 120 lecturas o joins por minuto por usuario, compartido entre HTTP y sockets; configurable para pruebas locales",
             "content": {
               "application/json": {
                 "schema": {
@@ -2434,7 +2444,7 @@
             }
           },
           "503": {
-            "description": "Dependencia indispensable indisponible",
+            "description": "DEPENDENCY_UNAVAILABLE: dependencia indispensable indisponible; timeout interno inicial de 3 segundos",
             "content": {
               "application/json": {
                 "schema": {
