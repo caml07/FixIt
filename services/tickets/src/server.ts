@@ -47,8 +47,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const databaseUrl = process.env.TICKETS_DATABASE_URL;
   const authUrl = process.env.AUTH_INTERNAL_URL;
   const serviceToken = process.env.TICKETS_AUTH_SERVICE_TOKEN;
+  const configuredChatToken = process.env.TICKETS_CHAT_SERVICE_TOKEN;
+  const chatServiceToken = configuredChatToken && configuredChatToken.length >= 32 ? configuredChatToken : undefined;
   const database = databaseUrl && authUrl && serviceToken ? openTicketsDatabase(databaseUrl) : undefined;
-  const dependencies = database && authUrl && serviceToken ? { database, authUrl, serviceToken } : undefined;
+  const dependencies = database && authUrl && serviceToken ? { database, authUrl, serviceToken, chatServiceToken } : undefined;
   const server = createServer(createApp(() => false, dependencies));
   const shutdown = manageShutdown(server, database);
   server.listen(port, host);

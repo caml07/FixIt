@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { authenticate } from "./auth.js";
 import { mutationRoutes } from "./mutations.js";
+import { internalRoutes } from "./internal.js";
 
 export interface AppDependencies {
   database: Pool;
@@ -10,6 +11,7 @@ export interface AppDependencies {
   serviceToken: string;
   publicOrigin?: string;
   verifyCsrf?: (token: string, sessionToken: string) => Promise<boolean>;
+  chatServiceToken?: string;
 }
 
 export function createApp(isDraining: () => boolean = () => false, dependencies?: AppDependencies) {
@@ -190,6 +192,7 @@ export function createApp(isDraining: () => boolean = () => false, dependencies?
     }
   });
   app.use(mutationRoutes(dependencies));
+  app.use(internalRoutes(dependencies));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof SyntaxError || (error instanceof Error && error.name === "PayloadTooLargeError")) {
       return res.status(422).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request body." }, requestId: randomUUID() });

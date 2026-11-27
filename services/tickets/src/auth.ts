@@ -10,6 +10,11 @@ export async function authenticate(cookieHeader: string, authUrl: string, servic
   if (cookies.length !== 1) return { kind: "invalid" };
   const sessionToken = cookies[0].slice("__Host-fixit_session=".length);
   if (!sessionToken || sessionToken.length > 256) return { kind: "invalid" };
+  return authenticateToken(sessionToken, authUrl, serviceToken);
+}
+
+export async function authenticateToken(sessionToken: string, authUrl: string, serviceToken: string): Promise<AuthResult> {
+  if (!sessionToken || sessionToken.length > 256) return { kind: "invalid" };
   try {
     const response = await fetch(new URL("/internal/v1/sessions/introspect", authUrl), {
       method: "POST", redirect: "error", signal: AbortSignal.timeout(3000),

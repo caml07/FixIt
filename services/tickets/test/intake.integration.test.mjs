@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { createDatabase, cleanup } from "./fixtures/postgres17.mjs";
 import { openTicketsDatabase } from "../dist/database.js";
@@ -13,6 +14,10 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
   let pool;
   let server;
   let auth;
+  const chatServiceToken = randomUUID();
+  let eligibilityAvailable = true;
+  let eligibilityMalformed = false;
+  let agentActive = true;
   try {
     execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy", "--config", "prisma.config.ts"], {
       env: { PATH: process.env.PATH, SYSTEMROOT: process.env.SYSTEMROOT, DATABASE_URL: fixture.ownerUrl }, timeout: 60000, stdio: "ignore"
@@ -28,6 +33,14 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
     await owner.query("UPDATE tickets.categories SET is_active = false WHERE code = 'HARDWARE'");
     pool = openTicketsDatabase(fixture.runtimeUrl);
     auth = createServer((req, res) => {
+      if (req.method === "GET" && req.url.startsWith("/internal/v1/users/")) {
+        assert.equal(req.headers.authorization, "Bearer test");
+        if (!eligibilityAvailable) { res.writeHead(503); res.end(); return; }
+        res.writeHead(200, { "content-type": "application/json" });
+        if (eligibilityMalformed) { res.end(JSON.stringify({ data: { eligible: "yes" } })); return; }
+        res.end(JSON.stringify({ data: { eligible: agentActive && req.url.includes("550e8400-e29b-41d4-a716-446655440005") }, requestId: "550e8400-e29b-41d4-a716-446655440001" }));
+        return;
+      }
       let body = "";
       req.on("data", (chunk) => { body += chunk; });
       req.on("end", () => {
@@ -48,7 +61,7 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
       });
     }).listen(0, "127.0.0.1");
     await new Promise((resolve) => auth.once("listening", resolve));
-    server = createApp(() => false, { database: pool, authUrl: `http://127.0.0.1:${auth.address().port}`, serviceToken: "test", publicOrigin: "https://fixit.invalid", verifyCsrf: async (token) => token === "synthetic-csrf" }).listen(0, "127.0.0.1");
+    server = createApp(() => false, { database: pool, authUrl: `http://127.0.0.1:${auth.address().port}`, serviceToken: "test", chatServiceToken, publicOrigin: "https://fixit.invalid", verifyCsrf: async (token) => token === "synthetic-csrf" }).listen(0, "127.0.0.1");
     await new Promise((resolve) => server.once("listening", resolve));
     const url = `http://127.0.0.1:${server.address().port}/api/v1/categories`;
     assert.equal((await fetch(url)).status, 401);
@@ -116,6 +129,13 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
       assert.equal((await fetch(`http://127.0.0.1:${failClosed.address().port}/api/v1/tickets/${createdBody.data.id}/claim`, {
         method: "POST", headers: { ...headers, cookie: "__Host-fixit_session=agent" }
       })).status, 403);
+      assert.equal((await fetch(`http://127.0.0.1:${failClosed.address().port}/api/v1/tickets/${createdBody.data.id}/assignee`, {
+        method: "PATCH", headers: { ...headers, cookie: "__Host-fixit_session=admin" },
+        body: JSON.stringify({ assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 1, reason: "Coverage" })
+      })).status, 403);
+      assert.equal((await fetch(`http://127.0.0.1:${failClosed.address().port}/internal/v1/tickets/chat-snapshot`, {
+        headers: { authorization: `Bearer ${chatServiceToken}` }
+      })).status, 503);
     } finally {
       await new Promise((resolve) => failClosed.close(resolve));
     }
@@ -236,6 +256,128 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
     assert.deepEqual(changedPriority.rows[0], { from_priority: "P3_NORMAL", to_priority: "P2_HIGH", reason: "Triage update" });
     assert.equal((await mutate(adminPath + "/status", "PATCH", "admin", { expectedVersion: 3, to: "IN_PROGRESS" })).status, 422);
     assert.equal((await mutate(adminPath + "/status", "PATCH", "admin", { expectedVersion: 3, to: "IN_PROGRESS", reason: "Covering absence" })).status, 200);
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const internal = base + "/internal/v1/tickets/" + adminTicket.rows[0].id;
+    const chatHeaders = { authorization: `Bearer ${chatServiceToken}`, "content-type": "application/json" };
+    const authorize = (actor, action, extra = {}) => fetch(internal + "/authorize", { method: "POST", headers: { ...chatHeaders, ...extra }, body: JSON.stringify({ sessionToken: actor, action }) });
+    assert.equal((await fetch(internal + "/chat-audience")).status, 401);
+    assert.equal((await fetch(internal + "/chat-audience", { headers: { authorization: "Bearer test" } })).status, 403);
+    assert.equal((await fetch(internal + "/chat-audience", { headers: { authorization: "Bearer wrong" } })).status, 401);
+    assert.equal((await fetch(base + "/internal/v1/tickets/00000000-0000-0000-0000-000000000001/chat-audience", { headers: chatHeaders })).status, 404);
+    const badAction = await fetch(internal + "/authorize", { method: "POST", headers: chatHeaders, body: JSON.stringify({ sessionToken: "agent", action: "invalid" }) });
+    assert.equal(badAction.status, 403);
+    assert.ok((await badAction.json()).requestId);
+    assert.equal((await authorize("agent", "chat.write")).status, 200);
+    assert.equal((await (await authorize("agent", "chat.write")).json()).data.allowed, true);
+    assert.equal((await authorize("agent2", "chat.read")).status, 404);
+    assert.equal((await authorize("expired", "chat.read")).status, 401);
+    assert.equal((await authorize("agent", "chat.read", { authorization: "Bearer wrong" })).status, 401);
+    assert.equal((await authorize("agent", "chat.read", { authorization: "Bearer test" })).status, 403);
+    assert.equal((await mutate(adminPath + "/assignee", "PATCH", "agent", { assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 4, reason: "Coverage" })).status, 403);
+    assert.equal((await mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440002", expectedVersion: 4, reason: "Coverage" })).status, 409);
+    agentActive = false;
+    const inactive = await mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 4, reason: "Coverage" });
+    assert.equal(inactive.status, 409);
+    assert.equal((await inactive.json()).error.code, "ASSIGNEE_INELIGIBLE");
+    agentActive = true;
+    assert.equal((await mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440099", expectedVersion: 4, reason: "Coverage" })).status, 409);
+    eligibilityAvailable = false;
+    assert.equal((await mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 4, reason: "Coverage" })).status, 503);
+    eligibilityAvailable = true;
+    eligibilityMalformed = true;
+    assert.equal((await mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 4, reason: "Coverage" })).status, 503);
+    eligibilityMalformed = false;
+    assert.equal((await mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 3, reason: "Coverage" })).status, 409);
+    assert.equal((await mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "not-a-uuid", expectedVersion: 4, reason: "Coverage" })).status, 422);
+    assert.equal((await mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 4, reason: "Coverage" }, { "x-csrf-token": "wrong" })).status, 403);
+    await owner.query("REVOKE INSERT ON tickets.outbox FROM tickets_runtime");
+    assert.equal((await mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 4, reason: "Coverage" })).status, 503);
+    const afterFailure = await owner.query("SELECT assignee_id, status, version FROM tickets.support_tickets WHERE id = $1", [adminTicket.rows[0].id]);
+    assert.deepEqual(afterFailure.rows[0], { assignee_id: "550e8400-e29b-41d4-a716-446655440003", status: "IN_PROGRESS", version: 4 });
+    assert.equal((await owner.query("SELECT count(*)::int AS count FROM tickets.ticket_timeline WHERE ticket_id = $1 AND ticket_version = 5", [adminTicket.rows[0].id])).rows[0].count, 0);
+    assert.equal((await owner.query("SELECT count(*)::int AS count FROM tickets.outbox WHERE ticket_id = $1 AND aggregate_version = 5", [adminTicket.rows[0].id])).rows[0].count, 0);
+    await owner.query("GRANT INSERT ON tickets.outbox TO tickets_runtime");
+    await owner.query("BEGIN");
+    await owner.query("SELECT id FROM tickets.support_tickets WHERE id = $1 FOR UPDATE", [adminTicket.rows[0].id]);
+    const acquiredReassign = new Set();
+    const recordReassignConnection = (client) => acquiredReassign.add(client);
+    pool.on("acquire", recordReassignConnection);
+    const requestReassign = () => mutate(adminPath + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 4, reason: "Coverage" });
+    const attempts = [requestReassign(), requestReassign()];
+    try {
+      for (let attempt = 0; attempt < 200 && acquiredReassign.size < 2; attempt++) await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.equal(acquiredReassign.size, 2);
+    } finally {
+      pool.off("acquire", recordReassignConnection);
+      await owner.query("COMMIT");
+    }
+    const reassignments = await Promise.all(attempts);
+    assert.deepEqual(reassignments.map((response) => response.status).sort(), [200, 409]);
+    assert.equal((await reassignments.find((response) => response.status === 200).json()).data.status, "IN_PROGRESS");
+    assert.equal((await authorize("agent", "chat.read")).status, 404);
+    assert.equal((await authorize("agent", "chat.write")).status, 404);
+    assert.equal((await authorize("agent", "chat.subscribe")).status, 404);
+    assert.equal((await (await authorize("agent2", "chat.write")).json()).data.allowed, true);
+    const audience = await (await fetch(internal + "/chat-audience", { headers: chatHeaders })).json();
+    assert.equal(audience.data.assigneeId, "550e8400-e29b-41d4-a716-446655440005");
+    assert.equal(audience.data.version, 5);
+    assert.deepEqual(Object.keys(audience.data).sort(), ["assigneeId", "reporterId", "status", "version"]);
+    const sameAssignee = await mutate(adminPath + "/assignee", "PATCH", "admin", {
+      assigneeId: audience.data.assigneeId.toUpperCase(), expectedVersion: 5, reason: "Already assigned"
+    });
+    assert.equal(sameAssignee.status, 409);
+    const unchangedVersion = await owner.query("SELECT version FROM tickets.support_tickets WHERE id = $1", [adminTicket.rows[0].id]);
+    assert.equal(unchangedVersion.rows[0].version, 5);
+    const snapshot = await (await fetch(base + "/internal/v1/tickets/chat-snapshot?limit=1", { headers: chatHeaders })).json();
+    assert.equal(snapshot.data.items.length, 1);
+    assert.deepEqual(Object.keys(snapshot.data.items[0]).sort(), ["assigneeId", "reporterId", "status", "ticketId", "version"]);
+    assert.ok(snapshot.data.page.nextCursor);
+    const next = await (await fetch(base + "/internal/v1/tickets/chat-snapshot?limit=1&cursor=" + snapshot.data.page.nextCursor, { headers: chatHeaders })).json();
+    assert.ok(snapshot.data.items[0].ticketId < next.data.items[0].ticketId);
+    const snapshotIds = [snapshot.data.items[0].ticketId];
+    let page = next.data;
+    while (true) {
+      snapshotIds.push(...page.items.map((item) => item.ticketId));
+      if (!page.page.nextCursor) break;
+      page = (await (await fetch(base + "/internal/v1/tickets/chat-snapshot?limit=1&cursor=" + page.page.nextCursor, { headers: chatHeaders })).json()).data;
+    }
+    const expectedIds = (await owner.query("SELECT id FROM tickets.support_tickets ORDER BY id")).rows.map((row) => row.id);
+    assert.deepEqual(snapshotIds, expectedIds);
+    assert.equal((await fetch(base + "/internal/v1/tickets/chat-snapshot?limit=101", { headers: chatHeaders })).status, 422);
+    assert.equal((await fetch(base + "/internal/v1/tickets/chat-snapshot?cursor=invalid", { headers: chatHeaders })).status, 422);
+    assert.equal((await fetch(base + "/internal/v1/tickets/chat-snapshot", { headers: { authorization: "Bearer test" } })).status, 403);
+    const closedInternal = base + "/internal/v1/tickets/" + createdBody.data.id + "/authorize";
+    const closedAction = async (action) => (await (await fetch(closedInternal, { method: "POST", headers: chatHeaders, body: JSON.stringify({ sessionToken: "valid", action }) })).json()).data;
+    assert.equal((await closedAction("chat.read")).allowed, true);
+    assert.equal((await closedAction("chat.subscribe")).allowed, true);
+    assert.deepEqual(await closedAction("chat.write"), { allowed: false, code: "CONFLICT" });
+    const openTicket = await owner.query("INSERT INTO tickets.support_tickets (reporter_id, category_code, title, description, reporter_urgency) VALUES ($1, 'NETWORK', 'Open', 'Synthetic', 'NORMAL') RETURNING id", [createdBody.data.reporterId]);
+    const openInternal = base + "/internal/v1/tickets/" + openTicket.rows[0].id + "/authorize";
+    const openAction = async (action) => (await (await fetch(openInternal, { method: "POST", headers: chatHeaders, body: JSON.stringify({ sessionToken: "valid", action }) })).json()).data;
+    assert.equal((await openAction("chat.read")).allowed, true);
+    assert.deepEqual(await openAction("chat.subscribe"), { allowed: false, code: "CONFLICT" });
+    assert.deepEqual(await openAction("chat.write"), { allowed: false, code: "CONFLICT" });
+    const cancelledInternal = base + "/internal/v1/tickets/" + fresh.rows[0].id + "/authorize";
+    const cancelledAction = async (action) => (await (await fetch(cancelledInternal, { method: "POST", headers: chatHeaders, body: JSON.stringify({ sessionToken: "valid", action }) })).json()).data;
+    assert.equal((await cancelledAction("chat.read")).allowed, true);
+    assert.equal((await cancelledAction("chat.subscribe")).allowed, true);
+    assert.deepEqual(await cancelledAction("chat.write"), { allowed: false, code: "CONFLICT" });
+    const resolvedTicket = await owner.query("INSERT INTO tickets.support_tickets (reporter_id, assignee_id, category_code, title, description, reporter_urgency, effective_priority, status) VALUES ($1, $2, 'NETWORK', 'Resolved', 'Synthetic', 'NORMAL', 'P3_NORMAL', 'RESOLVED') RETURNING id", [createdBody.data.reporterId, "550e8400-e29b-41d4-a716-446655440003"]);
+    const resolvedInternal = base + "/internal/v1/tickets/" + resolvedTicket.rows[0].id + "/authorize";
+    const resolvedAction = async (action) => (await (await fetch(resolvedInternal, { method: "POST", headers: chatHeaders, body: JSON.stringify({ sessionToken: "valid", action }) })).json()).data;
+    assert.equal((await resolvedAction("chat.read")).allowed, true);
+    assert.equal((await resolvedAction("chat.subscribe")).allowed, true);
+    assert.deepEqual(await resolvedAction("chat.write"), { allowed: false, code: "CONFLICT" });
+    const assignedTicket = await owner.query("INSERT INTO tickets.support_tickets (reporter_id, assignee_id, category_code, title, description, reporter_urgency, status) VALUES ($1, $2, 'NETWORK', 'Assigned', 'Synthetic', 'NORMAL', 'ASSIGNED') RETURNING id", [createdBody.data.reporterId, "550e8400-e29b-41d4-a716-446655440003"]);
+    const assignedReassignment = await mutate(ticketUrl + "/" + assignedTicket.rows[0].id + "/assignee", "PATCH", "admin", { assigneeId: "550e8400-e29b-41d4-a716-446655440005", expectedVersion: 1, reason: "Coverage" });
+    assert.equal(assignedReassignment.status, 200);
+    assert.equal((await assignedReassignment.json()).data.status, "ASSIGNED");
+    const reassignmentAudit = await owner.query("SELECT event_type, reason FROM tickets.ticket_timeline WHERE ticket_id = $1 AND ticket_version = 5", [adminTicket.rows[0].id]);
+    assert.deepEqual(reassignmentAudit.rows[0], { event_type: "REASSIGNED", reason: "Coverage" });
+    const reassignmentOutbox = await owner.query("SELECT event_type, payload FROM tickets.outbox WHERE ticket_id = $1 AND aggregate_version = 5", [adminTicket.rows[0].id]);
+    assert.equal(reassignmentOutbox.rows[0].event_type, "ticket.reassigned.v1");
+    assert.equal(reassignmentOutbox.rows[0].payload.payload.previousAssigneeId, "550e8400-e29b-41d4-a716-446655440003");
+    assert.equal(reassignmentOutbox.rows[0].payload.payload.assigneeId, "550e8400-e29b-41d4-a716-446655440005");
     const editRollback = await owner.query("INSERT INTO tickets.support_tickets (reporter_id, category_code, title, description, reporter_urgency) VALUES ($1, 'NETWORK', 'Before', 'Synthetic', 'NORMAL') RETURNING id", [createdBody.data.reporterId]);
     await owner.query("REVOKE INSERT ON tickets.ticket_timeline FROM tickets_runtime");
     assert.equal((await mutate(ticketUrl + "/" + editRollback.rows[0].id, "PATCH", "valid", { expectedVersion: 1, title: "After" })).status, 503);
@@ -245,6 +387,7 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
     await new Promise((resolve) => auth.close(resolve));
     auth = undefined;
     assert.equal((await fetch(url, { headers: { cookie: "__Host-fixit_session=valid" } })).status, 503);
+    assert.equal((await authorize("agent2", "chat.read")).status, 503);
   } finally {
     await new Promise((resolve) => server ? server.close(resolve) : resolve());
     await new Promise((resolve) => auth ? auth.close(resolve) : resolve());
