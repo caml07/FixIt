@@ -12,6 +12,8 @@ When the list scope is omitted, Reporter defaults to `mine`, Support Agent to `a
 
 Ticket creation validates session and role, but the real Auth handoff for session-bound CSRF verification remains unresolved. The running service therefore rejects creation rather than accepting an unverified token. Successful creation is tested with a synthetic verifier confined to the integration test. JetStream publishing and integration with real Auth and Chat remain unverified.
 
+The running service also rejects ticket edit, claim, status, and priority mutations until the Auth CSRF handoff is resolved. Timeline entries are written transactionally. The timeline retrieval endpoint remains deferred because the team must record the response for invalid pagination in the frozen contract before it is implemented.
+
 ## Increment 1 verification
 
 On 27 November 2026, the owner verified `GET /health` in Postman with HTTP 200, the expected envelope and a UUID request ID. The Node 24 Windows suite passed 9 tests, including both migrations, restricted database access, shutdown behavior and simulated Docker create/start timeouts.

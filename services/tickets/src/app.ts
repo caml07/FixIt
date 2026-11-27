@@ -2,6 +2,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { authenticate } from "./auth.js";
+import { mutationRoutes } from "./mutations.js";
 
 export interface AppDependencies {
   database: Pool;
@@ -188,6 +189,7 @@ export function createApp(isDraining: () => boolean = () => false, dependencies?
       return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
     }
   });
+  app.use(mutationRoutes(dependencies));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof SyntaxError || (error instanceof Error && error.name === "PayloadTooLargeError")) {
       return res.status(422).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request body." }, requestId: randomUUID() });
