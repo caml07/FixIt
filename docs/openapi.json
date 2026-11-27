@@ -2,8 +2,8 @@
   "openapi": "3.1.1",
   "info": {
     "title": "FixIt API — Contract-First",
-    "version": "0.2.0",
-    "description": "Baseline Contract-First 0.2.0 congelada por el propietario del proyecto el 26-11-2026 para iniciar implementacion. Incluye REST/OpenAPI, SQL/Prisma y protocolo Socket.IO documentado en docs/010.G1-Contracts.md. La congelacion no afirma ratificacion tecnica de Valeria/Rina ni G1 PASS; su revision queda pendiente. Todo cambio posterior requiere nueva version y actualizacion coordinada de OpenAPI, Prisma, SQL y protocolo. El proxy solo publica /api/v1 y /health. Las rutas /internal/v1 son exclusivas de la red interna; x-internal indica que NO deben exponerse. Autenticacion por cookie opaca, cambios autenticados con CSRF y comprobacion de Origin, autorizacion de recursos en Tickets."
+    "version": "0.3.0",
+    "description": "Contrato 0.3.0: comprobacion CSRF en introspeccion aprobada por el propietario; revision tecnica del equipo y G1 pendientes. La baseline 0.2.0 fue congelada el 26-11-2026. Este cambio no modifica Prisma, SQL ni Socket.IO. El proxy solo publica /api/v1 y /health; /internal/v1 es exclusivo de la red interna. Autenticacion por cookie opaca, mutaciones con CSRF y comprobacion de Origin, autorizacion de recursos en Tickets."
   },
   "servers": [
     {
@@ -2708,6 +2708,7 @@
           "Internal"
         ],
         "summary": "Introspectar token opaco",
+        "description": "Tickets y Chat pueden consultar sesiones FULL; Tickets envia csrfToken en cada mutacion del navegador y solo continua si active y csrfValid son true. Sin csrfToken se conserva la introspeccion para lecturas. Auth compara el token con el vinculado a esa misma sesion; no comparte la clave. Tickets verifica Origin y Fetch Metadata independientemente. No cachear ni registrar tokens, peticiones o respuestas. Fallos de Auth o respuesta incompleta implican rechazo; esta consulta no garantiza atomicidad frente a revocacion posterior.",
         "operationId": "post__internal_v1_sessions_introspect",
         "security": [
           {
@@ -2725,6 +2726,11 @@
                   "sessionToken": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "csrfToken": {
+                    "type": "string",
+                    "maxLength": 256,
+                    "description": "Token recibido por Tickets del encabezado X-CSRF-Token; se incluye incluso si esta vacio para una mutacion. Nunca contiene la clave de Auth."
                   }
                 },
                 "required": [
@@ -2749,6 +2755,10 @@
                       "properties": {
                         "active": {
                           "type": "boolean"
+                        },
+                        "csrfValid": {
+                          "type": "boolean",
+                          "description": "Presente si y solo si se solicito comprobacion CSRF. Es true solo para sesion FULL activa y token valido ligado a esa sesion; false para token incorrecto, vacio o sesion inactiva."
                         },
                         "subject": {
                           "type": "object",
