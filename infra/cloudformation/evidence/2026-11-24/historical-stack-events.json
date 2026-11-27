@@ -1,0 +1,466 @@
+{
+  "StackEvents": [
+    {
+      "Timestamp": "2026-11-24T04:25:21.694000+00:00",
+      "LogicalResourceId": "fixit-foundation",
+      "ResourceType": "AWS::CloudFormation::Stack",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:19.284000+00:00",
+      "LogicalResourceId": "PublicDefault",
+      "ResourceType": "AWS::EC2::Route",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:18.799000+00:00",
+      "LogicalResourceId": "PublicDefault",
+      "ResourceType": "AWS::EC2::Route",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:17.717000+00:00",
+      "LogicalResourceId": "PublicDefault",
+      "ResourceType": "AWS::EC2::Route",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:17.295000+00:00",
+      "LogicalResourceId": "InternetGateway",
+      "ResourceType": "AWS::EC2::InternetGateway",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:06.033000+00:00",
+      "LogicalResourceId": "PublicRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:05.999000+00:00",
+      "LogicalResourceId": "DataRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:05.726000+00:00",
+      "LogicalResourceId": "AppRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:04.049000+00:00",
+      "LogicalResourceId": "SmokeSecurityGroup",
+      "ResourceType": "AWS::EC2::SecurityGroup",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:00.515000+00:00",
+      "LogicalResourceId": "DataSubnetAAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:00.427000+00:00",
+      "LogicalResourceId": "DataSubnetBAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:00.287000+00:00",
+      "LogicalResourceId": "AppSubnetAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:25:00.254000+00:00",
+      "LogicalResourceId": "PublicSubnetAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:59.828000+00:00",
+      "LogicalResourceId": "DataSubnetAAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:59.780000+00:00",
+      "LogicalResourceId": "DataSubnetBAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:59.707000+00:00",
+      "LogicalResourceId": "PublicSubnetAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:59.682000+00:00",
+      "LogicalResourceId": "AppSubnetAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:58.681000+00:00",
+      "LogicalResourceId": "DataSubnetAAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:58.653000+00:00",
+      "LogicalResourceId": "PublicSubnetAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:58.623000+00:00",
+      "LogicalResourceId": "DataSubnetBAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:58.412000+00:00",
+      "LogicalResourceId": "AppSubnetAssociation",
+      "ResourceType": "AWS::EC2::SubnetRouteTableAssociation",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:58.254000+00:00",
+      "LogicalResourceId": "DataSubnetA",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:58.232000+00:00",
+      "LogicalResourceId": "DataSubnetB",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:58.226000+00:00",
+      "LogicalResourceId": "PublicSubnet",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:58.082000+00:00",
+      "LogicalResourceId": "AppSubnet",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:57.050000+00:00",
+      "LogicalResourceId": "ReleaseBucketPolicy",
+      "ResourceType": "AWS::S3::BucketPolicy",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:56.878000+00:00",
+      "LogicalResourceId": "GatewayAttachment",
+      "ResourceType": "AWS::EC2::VPCGatewayAttachment",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:56.821000+00:00",
+      "LogicalResourceId": "SmokeSecurityGroup",
+      "ResourceType": "AWS::EC2::SecurityGroup",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:56.560000+00:00",
+      "LogicalResourceId": "ReleaseBucketPolicy",
+      "ResourceType": "AWS::S3::BucketPolicy",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.799000+00:00",
+      "LogicalResourceId": "DataRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.784000+00:00",
+      "LogicalResourceId": "PublicRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.673000+00:00",
+      "LogicalResourceId": "ReleaseBucketPolicy",
+      "ResourceType": "AWS::S3::BucketPolicy",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.512000+00:00",
+      "LogicalResourceId": "AppRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.359000+00:00",
+      "LogicalResourceId": "DataSubnetA",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.352000+00:00",
+      "LogicalResourceId": "PublicSubnet",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.251000+00:00",
+      "LogicalResourceId": "DataRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.240000+00:00",
+      "LogicalResourceId": "DataSubnetB",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.227000+00:00",
+      "LogicalResourceId": "PublicRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.151000+00:00",
+      "LogicalResourceId": "AppSubnet",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.044000+00:00",
+      "LogicalResourceId": "AppRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:55.031000+00:00",
+      "LogicalResourceId": "GatewayAttachment",
+      "ResourceType": "AWS::EC2::VPCGatewayAttachment",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.624000+00:00",
+      "LogicalResourceId": "ReleaseBucket",
+      "ResourceType": "AWS::S3::Bucket",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.327000+00:00",
+      "LogicalResourceId": "GatewayAttachment",
+      "ResourceType": "AWS::EC2::VPCGatewayAttachment",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.276000+00:00",
+      "LogicalResourceId": "DataSubnetA",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.264000+00:00",
+      "LogicalResourceId": "PublicSubnet",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.245000+00:00",
+      "LogicalResourceId": "SmokeSecurityGroup",
+      "ResourceType": "AWS::EC2::SecurityGroup",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.242000+00:00",
+      "LogicalResourceId": "DataRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.239000+00:00",
+      "LogicalResourceId": "PublicRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.231000+00:00",
+      "LogicalResourceId": "DataSubnetB",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.230000+00:00",
+      "LogicalResourceId": "AppSubnet",
+      "ResourceType": "AWS::EC2::Subnet",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:54.230000+00:00",
+      "LogicalResourceId": "AppRoutes",
+      "ResourceType": "AWS::EC2::RouteTable",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:53.840000+00:00",
+      "LogicalResourceId": "Vpc",
+      "ResourceType": "AWS::EC2::VPC",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:44.765000+00:00",
+      "LogicalResourceId": "Cluster",
+      "ResourceType": "AWS::ECS::Cluster",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.978000+00:00",
+      "LogicalResourceId": "ChatRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.938000+00:00",
+      "LogicalResourceId": "Vpc",
+      "ResourceType": "AWS::EC2::VPC",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.831000+00:00",
+      "LogicalResourceId": "TicketsRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.746000+00:00",
+      "LogicalResourceId": "EdgeRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.727000+00:00",
+      "LogicalResourceId": "AuthRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_COMPLETE"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.726000+00:00",
+      "LogicalResourceId": "InternetGateway",
+      "ResourceType": "AWS::EC2::InternetGateway",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.531000+00:00",
+      "LogicalResourceId": "Cluster",
+      "ResourceType": "AWS::ECS::Cluster",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.363000+00:00",
+      "LogicalResourceId": "ChatRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.223000+00:00",
+      "LogicalResourceId": "ReleaseBucket",
+      "ResourceType": "AWS::S3::Bucket",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.206000+00:00",
+      "LogicalResourceId": "InternetGateway",
+      "ResourceType": "AWS::EC2::InternetGateway",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.176000+00:00",
+      "LogicalResourceId": "TicketsRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.097000+00:00",
+      "LogicalResourceId": "EdgeRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.093000+00:00",
+      "LogicalResourceId": "Cluster",
+      "ResourceType": "AWS::ECS::Cluster",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:41.040000+00:00",
+      "LogicalResourceId": "AuthRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:40.261000+00:00",
+      "LogicalResourceId": "AuthRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:40.185000+00:00",
+      "LogicalResourceId": "ReleaseBucket",
+      "ResourceType": "AWS::S3::Bucket",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:40.184000+00:00",
+      "LogicalResourceId": "Cluster",
+      "ResourceType": "AWS::ECS::Cluster",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:40.183000+00:00",
+      "LogicalResourceId": "InternetGateway",
+      "ResourceType": "AWS::EC2::InternetGateway",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:40.183000+00:00",
+      "LogicalResourceId": "EdgeRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:40.175000+00:00",
+      "LogicalResourceId": "ChatRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:40.164000+00:00",
+      "LogicalResourceId": "TicketsRepository",
+      "ResourceType": "AWS::ECR::Repository",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:40.153000+00:00",
+      "LogicalResourceId": "Vpc",
+      "ResourceType": "AWS::EC2::VPC",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:24:38.279000+00:00",
+      "LogicalResourceId": "fixit-foundation",
+      "ResourceType": "AWS::CloudFormation::Stack",
+      "ResourceStatus": "CREATE_IN_PROGRESS"
+    },
+    {
+      "Timestamp": "2026-11-24T04:23:42.605000+00:00",
+      "LogicalResourceId": "fixit-foundation",
+      "ResourceType": "AWS::CloudFormation::Stack",
+      "ResourceStatus": "REVIEW_IN_PROGRESS"
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "RouteTables": [
+    {
+      "Tags": [
+        {
+          "Key": "aws:cloudformation:stack-id",
+          "Value": "[REDACTED_STACK_ARN]"
+        },
+        {
+          "Key": "Project",
+          "Value": "FixIt"
+        },
+        {
+          "Key": "Name",
+          "Value": "fixit-foundation-AppRoutes"
+        },
+        {
+          "Key": "aws:cloudformation:stack-name",
+          "Value": "fixit-foundation"
+        },
+        {
+          "Key": "Environment",
+          "Value": "academic-pilot"
+        },
+        {
+          "Key": "aws:cloudformation:logical-id",
+          "Value": "AppRoutes"
+        }
+      ],
+      "Routes": [
+        {
+          "DestinationCidrBlock": "10.20.0.0/16",
+          "State": "active",
+          "Origin": "CreateRouteTable",
+          "Target": "local"
+        }
+      ]
+    },
+    {
+      "Tags": [
+        {
+          "Key": "aws:cloudformation:logical-id",
+          "Value": "DataRoutes"
+        },
+        {
+          "Key": "Name",
+          "Value": "fixit-foundation-DataRoutes"
+        },
+        {
+          "Key": "Project",
+          "Value": "FixIt"
+        },
+        {
+          "Key": "aws:cloudformation:stack-id",
+          "Value": "[REDACTED_STACK_ARN]"
+        },
+        {
+          "Key": "aws:cloudformation:stack-name",
+          "Value": "fixit-foundation"
+        },
+        {
+          "Key": "Environment",
+          "Value": "academic-pilot"
+        }
+      ],
+      "Routes": [
+        {
+          "DestinationCidrBlock": "10.20.0.0/16",
+          "State": "active",
+          "Origin": "CreateRouteTable",
+          "Target": "local"
+        }
+      ]
+    },
+    {
+      "Tags": [],
+      "Routes": [
+        {
+          "DestinationCidrBlock": "10.20.0.0/16",
+          "State": "active",
+          "Origin": "CreateRouteTable",
+          "Target": "local"
+        }
+      ]
+    },
+    {
+      "Tags": [
+        {
+          "Key": "Environment",
+          "Value": "academic-pilot"
+        },
+        {
+          "Key": "aws:cloudformation:logical-id",
+          "Value": "PublicRoutes"
+        },
+        {
+          "Key": "aws:cloudformation:stack-id",
+          "Value": "[REDACTED_STACK_ARN]"
+        },
+        {
+          "Key": "aws:cloudformation:stack-name",
+          "Value": "fixit-foundation"
+        },
+        {
+          "Key": "Project",
+          "Value": "FixIt"
+        },
+        {
+          "Key": "Name",
+          "Value": "fixit-foundation-PublicRoutes"
+        }
+      ],
+      "Routes": [
+        {
+          "DestinationCidrBlock": "10.20.0.0/16",
+          "State": "active",
+          "Origin": "CreateRouteTable",
+          "Target": "local"
+        },
+        {
+          "DestinationCidrBlock": "0.0.0.0/0",
+          "State": "active",
+          "Origin": "CreateRoute",
+          "Target": "internet-gateway"
+        }
+      ]
+    }
+  ]
+}

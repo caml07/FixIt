@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "FixIt API — Contract-First (draft)",
-    "version": "0.1.0-draft",
-    "description": "Borrador propuesto 15-11-2026; versionado en Git, aun sin implementacion ni ratificacion tecnica del equipo. El proxy solo publica /api/v1 y /health. Las rutas /internal/v1 son exclusivas de la red interna; x-internal indica que NO deben exponerse. Autenticacion por cookie opaca, cambios autenticados con CSRF y comprobacion de Origin, autorizacion de recursos en Tickets."
+    "title": "FixIt API — Contract-First",
+    "version": "0.2.0",
+    "description": "Baseline Contract-First 0.2.0 congelada por el propietario del proyecto el 26-11-2026 para iniciar implementacion. Incluye REST/OpenAPI, SQL/Prisma y protocolo Socket.IO documentado en docs/010.G1-Contracts.md. La congelacion no afirma ratificacion tecnica de Valeria/Rina ni G1 PASS; su revision queda pendiente. Todo cambio posterior requiere nueva version y actualizacion coordinada de OpenAPI, Prisma, SQL y protocolo. El proxy solo publica /api/v1 y /health. Las rutas /internal/v1 son exclusivas de la red interna; x-internal indica que NO deben exponerse. Autenticacion por cookie opaca, cambios autenticados con CSRF y comprobacion de Origin, autorizacion de recursos en Tickets."
   },
   "servers": [
     {
@@ -984,6 +984,9 @@
                     "minLength": 1,
                     "maxLength": 40
                   },
+                  "reporterUrgency": {
+                    "$ref": "#/components/schemas/ReporterUrgency"
+                  },
                   "location": {
                     "type": "string",
                     "maxLength": 160
@@ -996,7 +999,8 @@
                 "required": [
                   "title",
                   "description",
-                  "category"
+                  "category",
+                  "reporterUrgency"
                 ]
               }
             }
@@ -1358,6 +1362,9 @@
                     "type": "string",
                     "maxLength": 40
                   },
+                  "reporterUrgency": {
+                    "$ref": "#/components/schemas/ReporterUrgency"
+                  },
                   "expectedVersion": {
                     "type": "integer",
                     "minimum": 1
@@ -1380,6 +1387,11 @@
                   {
                     "required": [
                       "category"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "reporterUrgency"
                     ]
                   }
                 ]
@@ -1771,7 +1783,168 @@
             }
           }
         },
-        "description": "Aplicar exclusivamente transiciones del RBAC documentado: agente actual ASSIGNED->IN_PROGRESS->RESOLVED; reporter propietario RESOLVED->CLOSED u OPEN->CANCELLED; Admin excepcion justificada con reason no vacio. expectedVersion obligatorio. CLOSED/CANCELLED terminales. Cada cambio genera timeline+outbox transaccional; fallo de Auth o PG rechaza operacion."
+        "description": "Aplicar exclusivamente transiciones del RBAC documentado: agente actual ASSIGNED->IN_PROGRESS->RESOLVED; reporter propietario RESOLVED->CLOSED u OPEN->CANCELLED; Admin excepcion justificada con reason no vacio. expectedVersion obligatorio. La transición a IN_PROGRESS requiere effectivePriority no nula. CLOSED/CANCELLED terminales. Cada cambio genera timeline+outbox transaccional; fallo de Auth o PG rechaza operacion."
+      }
+    },
+    "/api/v1/tickets/{ticketId}/priority": {
+      "patch": {
+        "tags": [
+          "Tickets"
+        ],
+        "summary": "Fijar o actualizar prioridad oficial",
+        "operationId": "patch__api_v1_tickets__ticketId__priority",
+        "parameters": [
+          {
+            "name": "ticketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Identificador del ticket"
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "description": "Token ligado a la sesion, ademas de Origin/Fetch Metadata validos",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "priority": {
+                    "$ref": "#/components/schemas/TicketPriority"
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "description": "Obligatorio si el ticket ya tenía una prioridad oficial."
+                  }
+                },
+                "required": [
+                  "priority",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Prioridad oficial actualizada y auditada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Ticket"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sesion inexistente, expirada o revocada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Solo Agent asignado o Admin puede fijar prioridad",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ticket no encontrado/no visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version esperada incorrecta, ticket CLOSED/CANCELLED o estado incompatible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Prioridad o motivo invalido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de intentos excedido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependencia indispensable indisponible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "SUPPORT_AGENT",
+          "ADMIN"
+        ],
+        "description": "Solo el Support Agent actualmente asignado o Admin puede fijar/modificar la prioridad oficial; Agent no asignado y Reporter reciben 403. La prioridad inicia null y debe existir antes de IN_PROGRESS. CLOSED/CANCELLED no admiten cambios. Si ya existia, reason no puede estar vacio. Comparar expectedVersion, incrementar ticket.version y escribir ticket + PRIORITY_UPDATED timeline en una transaccion. No aceptar effectivePriority desde la edicion generica del Reporter."
       }
     },
     "/api/v1/tickets/{ticketId}/assignee": {
@@ -2066,14 +2239,14 @@
         }
       }
     },
-    "/api/v1/tickets/{ticketId}/attachment": {
+    "/api/v1/tickets/{ticketId}/attachments": {
       "post": {
         "tags": [
           "Tickets"
         ],
-        "summary": "Subir foto opcional privada",
-        "operationId": "post__api_v1_tickets__ticketId__attachment",
-        "description": "Validar contenido real MIME, checksum, tamaño y permisos. Storage EBS/S3 privado sin decidir; no hacer publico el objeto.",
+        "summary": "Subir un archivo de evidencia privado",
+        "operationId": "post__api_v1_tickets__ticketId__attachments",
+        "description": "Una subida por peticion. Solo Reporter propietario mientras el ticket siga OPEN. Maximo 5 archivos y 2 videos por ticket; imagen JPEG/PNG/WebP hasta 5 MiB, MP4 hasta 25 MiB y cuota combinada de 50 MiB. Verificar contenido real, checksum, permisos y cuota. Incrementar ticket.version y escribir ATTACHMENT_ADDED en timeline. No exponer claves ni URLs de storage.",
         "parameters": [
           {
             "name": "ticketId",
@@ -2106,18 +2279,28 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 1
                   }
                 },
                 "required": [
-                  "file"
+                  "file",
+                  "expectedVersion"
                 ]
+              },
+              "encoding": {
+                "file": {
+                  "contentType": "image/jpeg, image/png, image/webp, video/mp4"
+                }
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Una foto como maximo y hasta 5 MiB",
+            "description": "Ticket actualizado con la nueva version y metadata de sus adjuntos; el contenido no se incluye.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2125,7 +2308,7 @@
                   "additionalProperties": false,
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Attachment"
+                      "$ref": "#/components/schemas/Ticket"
                     },
                     "requestId": {
                       "type": "string",
@@ -2171,7 +2354,7 @@
             }
           },
           "409": {
-            "description": "Estado/version en conflicto",
+            "description": "Version, estado o cuota por ticket en conflicto",
             "content": {
               "application/json": {
                 "schema": {
@@ -2182,6 +2365,26 @@
           },
           "422": {
             "description": "Datos invalidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Archivo o cuota total excede el limite",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Tipo de archivo no permitido o contenido no coincide con MIME",
             "content": {
               "application/json": {
                 "schema": {
@@ -2210,14 +2413,20 @@
               }
             }
           }
-        }
-      },
+        },
+        "x-roles": [
+          "REPORTER"
+        ]
+      }
+    },
+    "/api/v1/tickets/{ticketId}/attachments/{attachmentId}": {
       "get": {
         "tags": [
           "Tickets"
         ],
-        "summary": "Descargar fotografia autorizada",
-        "operationId": "get__api_v1_tickets__ticketId__attachment",
+        "summary": "Descargar evidencia autorizada",
+        "operationId": "get__api_v1_tickets__ticketId__attachments__attachmentId",
+        "description": "Tickets comprueba el permiso actual sobre el ticket y transmite el archivo. No devuelve URL firmada ni clave de storage. La descarga usa Cache-Control: private, no-store y X-Content-Type-Options: nosniff.",
         "parameters": [
           {
             "name": "ticketId",
@@ -2228,15 +2437,41 @@
               "format": "uuid"
             },
             "description": "Identificador del ticket"
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Identificador del adjunto perteneciente al ticket"
           }
         ],
         "responses": {
           "200": {
-            "description": "Imagen privada",
+            "description": "Archivo privado autorizado",
             "headers": {
               "Content-Type": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "private, no-store"
+                  ]
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "nosniff"
+                  ]
                 }
               }
             },
@@ -2254,6 +2489,12 @@
                 }
               },
               "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "video/mp4": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -2301,7 +2542,12 @@
               }
             }
           }
-        }
+        },
+        "x-roles": [
+          "REPORTER",
+          "SUPPORT_AGENT",
+          "ADMIN"
+        ]
       }
     },
     "/api/v1/tickets/{ticketId}/messages": {
@@ -2424,7 +2670,17 @@
             }
           },
           "422": {
-            "description": "ticketId, cursor o limite invalidos",
+            "description": "VALIDATION_ERROR: ticketId, cursor o limite invalidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED: limite inicial de 120 lecturas o joins por minuto por usuario, compartido entre HTTP y sockets; configurable para pruebas locales",
             "content": {
               "application/json": {
                 "schema": {
@@ -2434,7 +2690,7 @@
             }
           },
           "503": {
-            "description": "Dependencia indispensable indisponible",
+            "description": "DEPENDENCY_UNAVAILABLE: dependencia indispensable indisponible; timeout interno inicial de 3 segundos",
             "content": {
               "application/json": {
                 "schema": {
@@ -3459,6 +3715,23 @@
           "CANCELLED"
         ]
       },
+      "ReporterUrgency": {
+        "type": "string",
+        "enum": [
+          "LOW",
+          "NORMAL",
+          "HIGH"
+        ]
+      },
+      "TicketPriority": {
+        "type": "string",
+        "enum": [
+          "P1_CRITICAL",
+          "P2_HIGH",
+          "P3_NORMAL",
+          "P4_LOW"
+        ]
+      },
       "User": {
         "type": "object",
         "additionalProperties": false,
@@ -3562,6 +3835,27 @@
               }
             ]
           },
+          "reporterUrgency": {
+            "$ref": "#/components/schemas/ReporterUrgency"
+          },
+          "effectivePriority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketPriority"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attachments": {
+            "type": "array",
+            "maxItems": 5,
+            "description": "Metadata de evidencia privada; cuota total de 50 MiB y maximo 2 videos por ticket.",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            }
+          },
           "status": {
             "$ref": "#/components/schemas/TicketStatus"
           },
@@ -3585,6 +3879,9 @@
           "title",
           "description",
           "category",
+          "reporterUrgency",
+          "effectivePriority",
+          "attachments",
           "status",
           "version",
           "createdAt",
@@ -3605,6 +3902,19 @@
           "title": {
             "type": "string"
           },
+          "reporterUrgency": {
+            "$ref": "#/components/schemas/ReporterUrgency"
+          },
+          "effectivePriority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketPriority"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/TicketStatus"
           },
@@ -3617,6 +3927,8 @@
           "id",
           "category",
           "title",
+          "reporterUrgency",
+          "effectivePriority",
           "status",
           "createdAt"
         ]
@@ -3645,7 +3957,9 @@
               "CLAIMED",
               "REASSIGNED",
               "STATUS_CHANGED",
-              "PHOTO_ADDED"
+              "PHOTO_ADDED",
+              "ATTACHMENT_ADDED",
+              "PRIORITY_UPDATED"
             ]
           },
           "fromStatus": {
@@ -3662,6 +3976,46 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/TicketStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fromUrgency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReporterUrgency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "toUrgency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReporterUrgency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fromPriority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketPriority"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "toPriority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketPriority"
               },
               {
                 "type": "null"
@@ -3751,13 +4105,15 @@
             "enum": [
               "image/jpeg",
               "image/png",
-              "image/webp"
+              "image/webp",
+              "video/mp4"
             ]
           },
           "sizeBytes": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 5242880
+            "maximum": 26214400,
+            "description": "Maximo por archivo: 5 MiB para imagen, 25 MiB para video MP4. La cuota combinada del ticket es 50 MiB."
           },
           "uploadedAt": {
             "type": "string",

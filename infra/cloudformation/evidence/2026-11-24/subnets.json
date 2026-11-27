@@ -1,0 +1,132 @@
+{
+  "Subnets": [
+    {
+      "CidrBlock": "10.20.1.0/24",
+      "AvailabilityZone": "us-east-1a",
+      "State": "available",
+      "MapPublicIpOnLaunch": false,
+      "Tags": [
+        {
+          "Key": "Project",
+          "Value": "FixIt"
+        },
+        {
+          "Key": "aws:cloudformation:stack-id",
+          "Value": "[REDACTED_STACK_ARN]"
+        },
+        {
+          "Key": "aws:cloudformation:stack-name",
+          "Value": "fixit-foundation"
+        },
+        {
+          "Key": "Name",
+          "Value": "fixit-foundation-PublicSubnet"
+        },
+        {
+          "Key": "Environment",
+          "Value": "academic-pilot"
+        },
+        {
+          "Key": "aws:cloudformation:logical-id",
+          "Value": "PublicSubnet"
+        }
+      ]
+    },
+    {
+      "CidrBlock": "10.20.21.0/24",
+      "AvailabilityZone": "us-east-1b",
+      "State": "available",
+      "MapPublicIpOnLaunch": false,
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "fixit-foundation-DataSubnetB"
+        },
+        {
+          "Key": "aws:cloudformation:stack-name",
+          "Value": "fixit-foundation"
+        },
+        {
+          "Key": "aws:cloudformation:logical-id",
+          "Value": "DataSubnetB"
+        },
+        {
+          "Key": "aws:cloudformation:stack-id",
+          "Value": "[REDACTED_STACK_ARN]"
+        },
+        {
+          "Key": "Environment",
+          "Value": "academic-pilot"
+        },
+        {
+          "Key": "Project",
+          "Value": "FixIt"
+        }
+      ]
+    },
+    {
+      "CidrBlock": "10.20.10.0/24",
+      "AvailabilityZone": "us-east-1a",
+      "State": "available",
+      "MapPublicIpOnLaunch": false,
+      "Tags": [
+        {
+          "Key": "Name",
+          "Value": "fixit-foundation-AppSubnet"
+        },
+        {
+          "Key": "aws:cloudformation:logical-id",
+          "Value": "AppSubnet"
+        },
+        {
+          "Key": "aws:cloudformation:stack-name",
+          "Value": "fixit-foundation"
+        },
+        {
+          "Key": "Project",
+          "Value": "FixIt"
+        },
+        {
+          "Key": "aws:cloudformation:stack-id",
+          "Value": "[REDACTED_STACK_ARN]"
+        },
+        {
+          "Key": "Environment",
+          "Value": "academic-pilot"
+        }
+      ]
+    },
+    {
+      "CidrBlock": "10.20.20.0/24",
+      "AvailabilityZone": "us-east-1a",
+      "State": "available",
+      "MapPublicIpOnLaunch": false,
+      "Tags": [
+        {
+          "Key": "aws:cloudformation:stack-id",
+          "Value": "[REDACTED_STACK_ARN]"
+        },
+        {
+          "Key": "aws:cloudformation:stack-name",
+          "Value": "fixit-foundation"
+        },
+        {
+          "Key": "Environment",
+          "Value": "academic-pilot"
+        },
+        {
+          "Key": "Project",
+          "Value": "FixIt"
+        },
+        {
+          "Key": "Name",
+          "Value": "fixit-foundation-DataSubnetA"
+        },
+        {
+          "Key": "aws:cloudformation:logical-id",
+          "Value": "DataSubnetA"
+        }
+      ]
+    }
+  ]
+}

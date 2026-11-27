@@ -1,0 +1,23 @@
+{
+  "SecurityGroups": [
+    {
+      "Description": "Outbound-only smoke task; no inbound rules",
+      "IpPermissions": [],
+      "IpPermissionsEgress": [
+        {
+          "IpProtocol": "tcp",
+          "FromPort": 443,
+          "ToPort": 443,
+          "UserIdGroupPairs": [],
+          "IpRanges": [
+            {
+              "CidrIp": "0.0.0.0/0"
+            }
+          ],
+          "Ipv6Ranges": [],
+          "PrefixListIds": []
+        }
+      ]
+    }
+  ]
+}
