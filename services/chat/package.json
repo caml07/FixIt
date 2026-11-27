@@ -5,7 +5,7 @@
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": {
-    "lint": "biome check src local test scripts",
+    "lint": "biome check src local test scripts integration",
     "format": "biome check --write src local test scripts",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.mjs",

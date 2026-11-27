@@ -75,4 +75,19 @@ Con Docker: `docker compose -f compose.chat.yml down`. Ambos conservan volumenes
 
 ## Pendiente de integracion
 
-Auth y Tickets reales, emision de cookies y login/CSRF del navegador, integración definitiva con la UI de feat/ui, consumidor JetStream/outbox y recuperacion de su proyeccion. Chat textual no necesita NATS para persistir o autorizar; esta entrega no implementa `ticket:updated` ni declara G1/G3/G4 PASS. Contadores en memoria, fixtures y CA local son para desarrollo. No se hicieron deploy ni cambios Cloud.
+Tickets real, integracion integral de los tres servicios, emision de cookies y login/CSRF del navegador, integración definitiva con la UI de feat/ui, consumidor JetStream/outbox y recuperacion de su proyeccion. Chat textual no necesita NATS para persistir o autorizar; esta entrega no implementa `ticket:updated` ni declara G1/G3/G4 PASS. Contadores en memoria, fixtures y CA local son para desarrollo. No se hicieron deploy ni cambios Cloud.
+
+## Prueba local con Auth real
+
+Con Node 24, Docker y OpenSSL, instalar las dependencias en este paquete y en
+un checkout de Auth que incluya la migracion vigente. Desde la raiz de Chat:
+
+```sh
+FIXIT_AUTH_ROOT=/ruta/al/checkout/auth CONTAINER_ENGINE=docker sh services/chat/scripts/test-real-auth.sh
+```
+
+La prueba crea PostgreSQL y MongoDB temporales, aplica las migraciones del
+checkout de Auth y comprueba login, envio, historial y rechazo tras logout.
+Tickets sigue siendo un simulador: esta prueba no valida autorizacion real de
+Tickets, HTTPS en navegador ni JetStream. No utiliza la base configurada por
+el usuario. Al terminar elimina los contenedores creados por la prueba.

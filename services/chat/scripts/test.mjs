@@ -1,11 +1,27 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { createServer } from "node:net";
 
 const engine = process.env.CONTAINER_ENGINE || "podman";
 const name = `fixit-chat-test-${randomUUID()}`;
 const owned = !process.env.MONGO_URI;
 try {
   if (owned) {
+    const port = await new Promise((resolve, reject) => {
+      const server = createServer();
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", () => {
+        const address = server.address();
+        if (!address || typeof address === "string") {
+          server.close();
+          reject(new Error("Could not reserve a MongoDB port"));
+          return;
+        }
+        server.close((error) =>
+          error ? reject(error) : resolve(address.port),
+        );
+      });
+    });
     execFileSync(
       engine,
       [
@@ -14,17 +30,11 @@ try {
         "--name",
         name,
         "-p",
-        "127.0.0.1::27017",
+        `127.0.0.1:${port}:27017`,
         "docker.io/library/mongo:8.0",
       ],
       { stdio: "pipe" },
     );
-    const port = execFileSync(engine, ["port", name, "27017"], {
-      encoding: "utf8",
-    })
-      .trim()
-      .split(":")
-      .pop();
     process.env.MONGO_URI = `mongodb://127.0.0.1:${port}`;
     execFileSync(
       engine,
@@ -46,5 +56,5 @@ try {
   );
   process.exitCode = result.status ?? 1;
 } finally {
-  if (owned) spawnSync(engine, ["rm", "-f", name], { stdio: "ignore" });
+  if (owned) spawnSync(engine, ["rm", "-fv", name], { stdio: "ignore" });
 }

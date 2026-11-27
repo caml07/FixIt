@@ -1,1 +1,3 @@
 *.pdf binary
+services/chat/**/*.ts text eol=lf
+services/chat/**/*.mjs text eol=lf
