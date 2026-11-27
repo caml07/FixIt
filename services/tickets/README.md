@@ -4,6 +4,14 @@ Use Node 24 and run npm ci, npm run build, then npm start from this directory. P
 
 The application does not run migrations on startup. The database integration tests use a disposable PostgreSQL 17 container and the canonical migrations.
 
+## Increment 2
+
+Categories and authorized ticket reads use Auth session introspection and the Tickets PostgreSQL runtime role. Configure `TICKETS_DATABASE_URL`, `AUTH_INTERNAL_URL`, and `TICKETS_AUTH_SERVICE_TOKEN` in the process environment. Use synthetic data and a disposable database for local development.
+
+When the list scope is omitted, Reporter defaults to `mine`, Support Agent to `assigned`, and Admin to `all`, as selected by Valeria. Explicit scopes remain subject to role and resource authorization.
+
+Ticket creation validates session and role, but the real Auth handoff for session-bound CSRF verification remains unresolved. The running service therefore rejects creation rather than accepting an unverified token. Successful creation is tested with a synthetic verifier confined to the integration test. JetStream publishing and integration with real Auth and Chat remain unverified.
+
 ## Increment 1 verification
 
 On 27 November 2026, the owner verified `GET /health` in Postman with HTTP 200, the expected envelope and a UUID request ID. The Node 24 Windows suite passed 9 tests, including both migrations, restricted database access, shutdown behavior and simulated Docker create/start timeouts.
