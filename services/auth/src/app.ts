@@ -194,13 +194,24 @@ export function createAuthApp(options: Options) {
     const limited = user.accountStatus === "PENDING_PASSWORD_CHANGE";
     const lifetime = limited ? timeouts.temporary : timeouts.full;
     const token = newSecret();
-    await database.session.create({
-      data: {
-        tokenHash: tokenHash(token), userId: user.id,
-        scope: limited ? "PASSWORD_CHANGE_ONLY" : "FULL",
-        expiresAt: new Date(Date.now() + lifetime * 1000), lastSeenAt: new Date(),
-      },
+    const created = await database.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM auth.users WHERE id = ${user.id}::uuid FOR UPDATE`;
+      const current = await tx.user.findUnique({ where: { id: user.id } });
+      if (!current || current.passwordHash !== user.passwordHash ||
+        current.accountStatus !== user.accountStatus ||
+        (limited && (!current.temporaryExpiresAt || current.temporaryExpiresAt.getTime() <= Date.now()))) {
+        return false;
+      }
+      await tx.session.create({
+        data: {
+          tokenHash: tokenHash(token), userId: user.id,
+          scope: limited ? "PASSWORD_CHANGE_ONLY" : "FULL",
+          expiresAt: new Date(Date.now() + lifetime * 1000), lastSeenAt: new Date(),
+        },
+      });
+      return true;
     });
+    if (!created) return sendError(res, 401, "INVALID_CREDENTIALS", "Credenciales incorrectas.");
     res.setHeader("Set-Cookie", setSessionCookie(token, lifetime));
     res.setHeader("Cache-Control", "no-store");
     return sendData(res, { user: publicUser(user), mustChangePassword: limited });

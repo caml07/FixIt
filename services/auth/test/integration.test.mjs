@@ -31,8 +31,24 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
       passwordHash: adminHash,
     },
   });
+  let pauseLoginLookup;
+  const users = new Proxy(db.user, {
+    get(target, property) {
+      if (property === "findFirst") return async (...args) => {
+        const result = await target.findFirst(...args);
+        if (pauseLoginLookup) await pauseLoginLookup();
+        return result;
+      };
+      return Reflect.get(target, property);
+    },
+  });
+  const database = new Proxy(db, {
+    get(target, property) {
+      return property === "user" ? users : Reflect.get(target, property);
+    },
+  });
   const app = createAuthApp({
-    database: db, publicOrigin: origin,
+    database, publicOrigin: origin,
     csrfKey, serviceTokens: [serviceTokenA, serviceTokenB],
   });
   const server = createServer(app);
@@ -121,6 +137,14 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     assert.equal(tempLogin.data.data.mustChangePassword, true);
     assert(tempLogin.cookie);
     const temporaryCookie = tempLogin.cookie;
+    const temporaryToken = temporaryCookie.split("=")[1];
+    for (const bearer of [serviceTokenA, serviceTokenB]) {
+      const provisional = await request("/internal/v1/sessions/introspect", {
+        method: "POST", requestOrigin: null, bearer, body: { sessionToken: temporaryToken },
+      });
+      assert.equal(provisional.response.status, 200);
+      assert.deepEqual(provisional.data.data, { active: false });
+    }
     const temporaryCsrf = await csrf(temporaryCookie);
     assert.equal((await request("/api/v1/admin/users", { cookie: temporaryCookie })).response.status, 403);
     const newTeacherPassword = randomBytes(32).toString("base64url");
@@ -165,9 +189,17 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     });
     assert.equal(unauthorizedIntrospection.response.status, 401);
 
+    let resumeLogin;
+    let loginPaused;
+    const loginReachedCreation = new Promise((resolve) => { loginPaused = resolve; });
+    const loginMayContinue = new Promise((resolve) => { resumeLogin = resolve; });
+    pauseLoginLookup = async () => { loginPaused(); await loginMayContinue; };
+    const concurrentLogin = login(teacherEmail, newTeacherPassword);
+    await loginReachedCreation;
     const reset = await request("/api/v1/admin/users/" + teacherId + "/reset-password", {
       method: "POST", cookie: adminCookie, csrf: adminCsrf,
     });
+    pauseLoginLookup = undefined;
     assert.equal(reset.response.status, 200);
     assert.equal(reset.response.headers.get("cache-control"), "no-store");
     const resetTemporary = reset.data.data.temporaryPassword;
@@ -182,6 +214,10 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
       method: "POST", cookie: resetLogin.cookie, csrf: resetCsrf,
       body: { currentPassword: resetTemporary, newPassword: passwordAfterReset },
     })).response.status, 204);
+    resumeLogin();
+    const staleLogin = await concurrentLogin;
+    assert.equal(staleLogin.response.status, 401, "a login using the old password must be rejected after reset and activation");
+    assert.equal(staleLogin.cookie, undefined);
     const currentTeacherLogin = await login(teacherEmail, passwordAfterReset);
     assert.equal(currentTeacherLogin.response.status, 200);
     assert(currentTeacherLogin.cookie);
@@ -239,6 +275,14 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     assert.equal((await request("/api/v1/auth/logout", {
       method: "POST", cookie: fullAfterReactivation.cookie, csrf: finalCsrf,
     })).response.status, 204);
+    const loggedOutToken = fullAfterReactivation.cookie.split("=")[1];
+    for (const bearer of [serviceTokenA, serviceTokenB]) {
+      const loggedOut = await request("/internal/v1/sessions/introspect", {
+        method: "POST", requestOrigin: null, bearer, body: { sessionToken: loggedOutToken },
+      });
+      assert.equal(loggedOut.response.status, 200);
+      assert.deepEqual(loggedOut.data.data, { active: false });
+    }
     assert.equal((await request("/api/v1/auth/me", {
       cookie: fullAfterReactivation.cookie,
     })).response.status, 401);

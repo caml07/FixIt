@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // FixIt: dependency-free Markdown link checker; checks local file existence only.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join, resolve, dirname, relative } from "node:path";
+import { join, resolve, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -41,7 +41,7 @@ for (const file of markdown) {
     const dest = resolve(dirname(file), rel);
     if (!existsSync(dest)) {
       errors.push(`Broken link in ${relative(root, file)}: ${link}`);
-    } else if (!dest.startsWith(root + "/") && dest !== root) {
+    } else if (!dest.startsWith(root + sep) && dest !== root) {
       errors.push(`Link escapes repository: ${relative(root, file)} -> ${link}`);
     }
   }
