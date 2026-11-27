@@ -24,6 +24,15 @@ BD externas. `CONTAINER_ENGINE=docker` permite seleccionar Docker.
 `node scripts/ci/check-apps.mjs` reproduce la CI de aplicaciones (incluye
 audit de dependencias de produccion).
 
+`npm run auth:check-db` verifica que `AUTH_DATABASE_URL` pueda conectar y
+consultar las tablas de usuarios y sesiones de Auth. Devuelve codigo 0 cuando
+la comprobacion pasa y 1 ante error, sin mostrar la URL ni credenciales. Usa
+limites de conexion y consulta de 3 segundos. Comprueba una conexion nueva;
+no demuestra que el proceso Auth este atendiendo peticiones ni sustituye una
+comprobacion integral de readiness del servicio.
+El comando usa `tsx` y se ha verificado con dependencias de desarrollo
+instaladas; no se ha preparado como probe de imagen de produccion.
+
 ## Arranque manual para integracion local
 
 1. Preparar PostgreSQL local con una BD de desarrollo dedicada. Desde la
@@ -64,6 +73,15 @@ audit de dependencias de produccion).
 - La activacion limita a 20 intentos por cuenta en 15 minutos, despues de
   autenticar la sesion provisional y validar CSRF. Los limitadores son en
   memoria; aun requieren revision para multiples replicas y proxy de confianza.
+  En el modo actual de un proceso, el limite de login usa la IP de la conexion
+  directa. Un proxy puede hacer que varias personas compartan la misma cuota;
+  los valores `X-Forwarded-For` del cliente no se usan como identidad confiable.
+  Con varias replicas los contadores no se comparten y se reinician con cada
+  proceso. Antes de habilitar replicas o exponer el servicio, definir la
+  topologia de proxies de confianza y un contador compartido, y comprobar el
+  comportamiento con solicitudes reales; no habilitar confianza universal en
+  cabeceras reenviadas. La suite local comprueba el rechazo del spoofing, no
+  valida una topologia de despliegue ni limitacion distribuida.
 - La blocklist incorporada es solo un minimo de desarrollo. Para produccion,
   provisionar un corpus local revisado de contrasenas comunes/comprometidas,
   con licencia y procedencia documentadas; no enviar contrasenas del usuario

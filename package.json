@@ -9,6 +9,7 @@
     "db:migrate": "prisma migrate deploy",
     "auth:dev": "tsx watch services/auth/src/server.ts",
     "auth:start": "tsx services/auth/src/server.ts",
+    "auth:check-db": "tsx services/auth/src/check-db.ts",
     "test:auth:security": "node --experimental-strip-types --test services/auth/test/security.test.mjs",
     "test:auth": "node --import tsx --test services/auth/test/*.test.mjs",
     "lint": "npm run db:generate && tsc --noEmit --noUnusedLocals --noUnusedParameters && node --check scripts/ci/check-apps.mjs",
