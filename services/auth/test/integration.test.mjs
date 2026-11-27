@@ -81,6 +81,24 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     return request("/api/v1/auth/login", { method: "POST", body: { email, password } });
   }
   try {
+    const agent = await db.user.create({ data: {
+      email: `agent.${randomUUID()}@invalid.example`, displayName: "Test Agent",
+      role: "SUPPORT_AGENT", accountStatus: "ACTIVE", passwordHash: adminHash,
+    } });
+    const eligibilityPath = `/internal/v1/users/${agent.id}/agent-eligibility`;
+    assert.equal((await request(eligibilityPath)).response.status, 401);
+    assert.equal((await request(eligibilityPath, { bearer: serviceTokenB })).response.status, 403);
+    const eligible = await request(eligibilityPath, { bearer: serviceTokenA });
+    assert.equal(eligible.response.status, 200);
+    assert.deepEqual(eligible.data.data, { eligible: true });
+    assert.equal(eligible.response.headers.get("cache-control"), "no-store");
+    const nonAgent = await request(`/internal/v1/users/${admin.id}/agent-eligibility`, { bearer: serviceTokenA });
+    assert.deepEqual(nonAgent.data.data, { eligible: false });
+    const absent = await request(`/internal/v1/users/${randomUUID()}/agent-eligibility`, { bearer: serviceTokenA });
+    assert.deepEqual(absent.data.data, { eligible: false });
+    await db.user.update({ where: { id: agent.id }, data: { accountStatus: "DISABLED" } });
+    assert.deepEqual((await request(eligibilityPath, { bearer: serviceTokenA })).data.data, { eligible: false });
+
     const health = await request("/health");
     assert.equal(health.response.status, 200);
     assert.equal((await request("/api/v1/auth/me")).response.status, 401);
@@ -170,6 +188,15 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     assert.equal(introspection.data.data.active, true);
     assert.equal(introspection.data.data.subject.userId, teacherId);
     assert.equal(introspection.data.data.subject.role, "REPORTER");
+    const teacherCsrf = await csrf(teacherCookie);
+    for (const [csrfValue, expected] of [[teacherCsrf, true], [adminCsrf, false], ["", false]]) {
+      const result = await request("/internal/v1/sessions/introspect", {
+        method: "POST", requestOrigin: null, bearer: serviceTokenA,
+        body: { sessionToken: teacherToken, csrfToken: csrfValue },
+      });
+      assert.equal(result.response.status, 200);
+      assert.equal(result.data.data.csrfValid, expected);
+    }
 
     // Age a real session without waiting for the idle timeout.
     const idleLogin = await login(teacherEmail, newTeacherPassword);
@@ -182,6 +209,11 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
       method: "POST", requestOrigin: null, bearer: serviceTokenB, body: { sessionToken: idleToken },
     });
     assert.equal(idleIntrospection.data.data.active, false);
+    const idleCsrf = await request("/internal/v1/sessions/introspect", {
+      method: "POST", requestOrigin: null, bearer: serviceTokenA,
+      body: { sessionToken: idleToken, csrfToken: teacherCsrf },
+    });
+    assert.deepEqual(idleCsrf.data.data, { active: false, csrfValid: false });
 
     const unauthorizedIntrospection = await request("/internal/v1/sessions/introspect", {
       method: "POST", requestOrigin: null, bearer: "invalid-credential",

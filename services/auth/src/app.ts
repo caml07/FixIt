@@ -40,7 +40,10 @@ const createInput = z.strictObject({
   displayName: z.string().trim().min(1).max(120),
   role: z.enum(["REPORTER", "SUPPORT_AGENT"]),
 });
-const introspectInput = z.strictObject({ sessionToken: z.string().min(1).max(256) });
+const introspectInput = z.strictObject({
+  sessionToken: z.string().min(1).max(256),
+  csrfToken: z.string().max(256).optional(),
+});
 const listInput = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   cursor: z.uuid().optional(),
@@ -426,6 +429,7 @@ export function createAuthApp(options: Options) {
   });
 
   app.post("/internal/v1/sessions/introspect", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
     const bearer = req.get("Authorization") ?? "";
     const credential = bearer.startsWith("Bearer ") ? bearer.slice(7) : "";
     if (!serviceTokens.some((expected) => equalsSecret(credential, expected))) {
@@ -433,16 +437,38 @@ export function createAuthApp(options: Options) {
     }
     const parsed = introspectInput.safeParse(req.body);
     if (!parsed.success) return sendError(res, 422, "INVALID_INPUT", "Formato de sesión inválido.");
-    const { sessionToken } = parsed.data;
-    if (!/^[A-Za-z0-9_-]{43}$/.test(sessionToken)) return sendData(res, { active: false });
+    const { sessionToken, csrfToken: suppliedCsrf } = parsed.data;
+    const inactive = suppliedCsrf === undefined ? { active: false } : { active: false, csrfValid: false };
+    if (!/^[A-Za-z0-9_-]{43}$/.test(sessionToken)) return sendData(res, inactive);
     const found = await activeSession(sessionToken, true);
     if (!found) {
-      return sendData(res, { active: false });
+      return sendData(res, inactive);
     }
     return sendData(res, {
       active: true, subject: { userId: found.user.id, role: found.user.role },
       expiresAt: found.expiresAt.toISOString(),
+      ...(suppliedCsrf === undefined ? {} : {
+        csrfValid: suppliedCsrf.length === 43 && equalsSecret(suppliedCsrf, csrfToken(found.tokenHash, csrfKey)),
+      }),
     });
+  });
+
+  app.get("/internal/v1/users/:userId/agent-eligibility", async (req, res) => {
+    const bearer = req.get("Authorization") ?? "";
+    const credential = bearer.startsWith("Bearer ") ? bearer.slice(7) : "";
+    if (!equalsSecret(credential, serviceTokens[0])) {
+      if (equalsSecret(credential, serviceTokens[1])) {
+        return sendError(res, 403, "FORBIDDEN", "Servicio no autorizado.");
+      }
+      return sendError(res, 401, "UNAUTHENTICATED", "Credencial interna inválida.");
+    }
+    res.setHeader("Cache-Control", "no-store");
+    const id = z.uuid().safeParse(req.params.userId);
+    if (!id.success) return sendData(res, { eligible: false });
+    const user = await database.user.findUnique({
+      where: { id: id.data }, select: { role: true, accountStatus: true },
+    });
+    return sendData(res, { eligible: user?.role === "SUPPORT_AGENT" && user.accountStatus === "ACTIVE" });
   });
 
   app.use((error: unknown, _req: Request, res: Response, _next: express.NextFunction) => {

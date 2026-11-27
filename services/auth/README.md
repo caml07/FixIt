@@ -68,6 +68,17 @@ instaladas; no se ha preparado como probe de imagen de produccion.
 
 ## Seguridad y limites
 
+- Tickets puede consultar `GET /internal/v1/users/{userId}/agent-eligibility`
+  con su credencial interna: solo un `SUPPORT_AGENT` `ACTIVE` resulta elegible;
+  Chat recibe 403. La respuesta no se almacena. La consulta y la reasignacion
+  no son atomicas entre servicios; Tickets debe negar el cambio si Auth falla.
+- La introspeccion acepta `csrfToken` opcional y responde `csrfValid` cuando
+  se solicita: solo es verdadero para una sesion FULL activa y su propio token.
+  Tickets debe validar Origin/Fetch Metadata, exigir ambos `active:true` y
+  `csrfValid:true` en cada mutacion y rechazar errores o respuesta incompleta.
+  No compartir `AUTH_CSRF_KEY` ni tratar introspeccion exitosa por si sola
+  como validacion CSRF. La integracion con Tickets sigue pendiente de prueba.
+
 - Sesiones opacas con revocacion y timeout absoluto e inactividad persistida
   en `auth.sessions.last_seen_at`; introspeccion acepta solo sesiones FULL.
 - La activacion limita a 20 intentos por cuenta en 15 minutos, despues de
