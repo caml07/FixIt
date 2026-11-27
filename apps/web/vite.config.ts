@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 
 const chatTarget = process.env.FIXIT_CHAT_TARGET ?? "https://localhost:8443";
 const fixturesTarget = process.env.FIXIT_FIXTURES_TARGET ?? chatTarget;
+const authTarget = process.env.FIXIT_AUTH_TARGET ?? chatTarget;
 const origin = process.env.FIXIT_PUBLIC_ORIGIN ?? "https://localhost:8443";
 const proxy = (target: string) => ({
   target,
@@ -18,6 +19,8 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
+      "/api/v1/auth": proxy(authTarget),
+      "/api/v1/admin": proxy(authTarget),
       "/api/v1": proxy(chatTarget),
       "/__dev": proxy(fixturesTarget),
       "/socket.io": { ...proxy(chatTarget), ws: true },

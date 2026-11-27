@@ -9,18 +9,16 @@ import {
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, useToast } from "../app/providers";
-import { defaultPathForRole } from "../lib/auth";
+import { defaultPathForRole, previewAuth } from "../lib/auth";
 import { previewAccounts } from "../lib/fixtures";
 
 export function LoginPage() {
   const { signIn } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const [email, setEmail] = useState(
-    import.meta.env.DEV ? previewAccounts[1]!.email : "",
-  );
+  const [email, setEmail] = useState(previewAuth ? previewAccounts[1]!.email : "");
   const [password, setPassword] = useState(
-    import.meta.env.DEV ? previewAccounts[1]!.password : "",
+    previewAuth ? previewAccounts[1]!.password : "",
   );
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
@@ -62,7 +60,7 @@ export function LoginPage() {
               <small>IT support desk</small>
             </span>
           </div>
-          <span className="auth-pilot-tag">LOCAL PREVIEW</span>
+          {previewAuth ? <span className="auth-pilot-tag">LOCAL PREVIEW</span> : null}
         </div>
         <div className="auth-story-copy">
           <h1>Keep every request moving.</h1>
@@ -134,7 +132,9 @@ export function LoginPage() {
               <label className="field-label" htmlFor="password">
                 Password
               </label>
-              <span className="field-helper">Local preview password</span>
+              {previewAuth ? (
+                <span className="field-helper">Local preview password</span>
+              ) : null}
             </div>
             <div className="password-input-wrap">
               <input
@@ -171,7 +171,7 @@ export function LoginPage() {
             </button>
           </form>
 
-          {import.meta.env.DEV ? (
+          {previewAuth ? (
             <div className="preview-access">
               <div className="preview-access-heading">
                 <span>Local preview access</span>

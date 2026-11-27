@@ -41,3 +41,32 @@ Evidence: [screenshots](../../.impeccable/review) from the previous local previe
 - The Activity rail displays seeded data; it is not yet a live audit trail. Attachment selection validates type and size in the UI, but uploads/storage are not implemented. Admin sample user creation does not provision credentials. First-access password activation, real user administration, notifications and other contract flows remain pending.
 - Production build compilation does not prove that its real-service adapters are compatible with the team's completed APIs.
 - No deployment or shared DB migrations were performed.
+
+## Auth service adapter
+
+For a local integration setup, set `VITE_AUTH_MODE=real` and
+`FIXIT_AUTH_TARGET` to the Auth server before starting Vite. The proxy's
+`FIXIT_PUBLIC_ORIGIN` must match Auth's configured origin. The application
+maps Auth's account ID and requires a password change before opening the
+workspace when Auth returns a temporary session. After activation, sign in
+again; Auth invalidates that temporary session.
+
+This switch only connects Auth. The development Tickets adapter remains a
+fixture and does not accept real Auth sessions, so it does not demonstrate an
+end-to-end ticket or conversation flow. Use a single-origin HTTPS proxy for
+browser integration; Vite's local proxy is for development only.
+
+### Local browser integration checks
+
+With Node 24, Docker, OpenSSL, Playwright Chromium and dependencies installed
+in this package and the relevant service checkout, run from the UI root:
+
+```sh
+FIXIT_AUTH_ROOT=/path/to/auth CONTAINER_ENGINE=docker sh apps/web/scripts/test-real-auth.sh
+FIXIT_CHAT_ROOT=/path/to/chat/services/chat CONTAINER_ENGINE=docker sh apps/web/scripts/test-real-chat.sh
+```
+
+`FIXIT_CHROMIUM_PATH` can select an existing Chromium installation. The first
+check uses real Auth and disposable PostgreSQL, with Tickets simulated. The
+second uses real Chat and disposable MongoDB, with Auth and Tickets simulated.
+Both create and remove only their own temporary resources.

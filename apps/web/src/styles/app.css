@@ -125,6 +125,9 @@
   min-height: 100vh;
   background: var(--surface);
 }
+.auth-page-single {
+  grid-template-columns: 1fr;
+}
 .auth-story {
   position: relative;
   display: flex;
@@ -366,6 +369,7 @@
   background: var(--forest-soft);
   border-radius: 10px;
 }
+.auth-heading h1,
 .auth-heading h2 {
   margin: 0;
   color: var(--ink);

@@ -2,6 +2,7 @@ import { LifeBuoy } from "lucide-react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { defaultPathForRole } from "../lib/auth";
+import { ActivatePasswordPage } from "../pages/ActivatePasswordPage";
 import { LoginPage } from "../pages/LoginPage";
 import { NewTicketPage } from "../pages/NewTicketPage";
 import { TicketDetailPage } from "../pages/TicketDetailPage";
@@ -31,6 +32,7 @@ function AppGate() {
       </Routes>
     );
   }
+  if (state.status === "password-change") return <ActivatePasswordPage />;
 
   const user = state.user;
   const home = defaultPathForRole(user.role);

@@ -14,12 +14,14 @@ import type { Priority, Ticket, TicketDraft, TicketStatus, User } from "../lib/t
 export type AuthState =
   | { status: "loading"; user: null }
   | { status: "signed-out"; user: null }
+  | { status: "password-change"; user: User }
   | { status: "signed-in"; user: User };
 
 interface AuthContextValue {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<User>;
   signOut: () => Promise<void>;
+  activate: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -31,8 +33,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     let active = true;
     authApi
       .current()
-      .then((user) => {
-        if (active) setState({ status: "signed-in", user });
+      .then(({ user, mustChangePassword }) => {
+        if (active)
+          setState({
+            status: mustChangePassword ? "password-change" : "signed-in",
+            user,
+          });
       })
       .catch(() => {
         if (active) setState({ status: "signed-out", user: null });
@@ -43,8 +49,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   });
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const user = await authApi.login(email, password);
-    setState({ status: "signed-in", user });
+    const { user, mustChangePassword } = await authApi.login(email, password);
+    setState({ status: mustChangePassword ? "password-change" : "signed-in", user });
     return user;
   }, []);
 
@@ -53,7 +59,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setState({ status: "signed-out", user: null });
   }, []);
 
-  const value = useMemo(() => ({ state, signIn, signOut }), [signIn, signOut, state]);
+  const activate = useCallback(async (currentPassword: string, newPassword: string) => {
+    await authApi.activate(currentPassword, newPassword);
+    setState({ status: "signed-out", user: null });
+  }, []);
+
+  const value = useMemo(
+    () => ({ state, signIn, signOut, activate }),
+    [signIn, signOut, activate, state],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

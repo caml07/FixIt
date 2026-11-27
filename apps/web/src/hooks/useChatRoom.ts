@@ -21,6 +21,7 @@ export function useChatRoom({ ticketId, enabled, canSend }: UseChatRoomOptions) 
   const [state, setState] = useState<RoomState>(enabled ? "connecting" : "locked");
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const pendingMessage = useRef<{ body: string; id: string } | null>(null);
 
   const mergeMessages = useCallback((incoming: ChatMessage[]) => {
     setMessages((current) => {
@@ -116,13 +117,17 @@ export function useChatRoom({ ticketId, enabled, canSend }: UseChatRoomOptions) 
       const socket = socketRef.current;
       if (!canSend) throw new Error("This conversation is read-only.");
       if (!socket?.connected) throw new Error("The live connection is not ready yet.");
+      if (pendingMessage.current?.body !== body) {
+        pendingMessage.current = { body, id: crypto.randomUUID() };
+      }
       const ack = (await socket.timeout(5000).emitWithAck("chat:send", {
         ticketId,
-        clientMessageId: crypto.randomUUID(),
+        clientMessageId: pendingMessage.current.id,
         body,
       })) as Ack;
       if (!ack.ok) throw new Error(ack.error?.message ?? "Message could not be sent.");
       await loadHistory();
+      pendingMessage.current = null;
     },
     [canSend, loadHistory, ticketId],
   );
@@ -130,6 +135,7 @@ export function useChatRoom({ ticketId, enabled, canSend }: UseChatRoomOptions) 
   const retry = useCallback(() => {
     const socket = socketRef.current;
     if (!socket) return;
+    if (socket.connected) socket.disconnect();
     setState("connecting");
     setError(null);
     socket.connect();

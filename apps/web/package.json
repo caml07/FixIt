@@ -8,8 +8,8 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "lint": "biome check src scripts vite.config.ts vitest.config.ts",
-    "format": "biome check --write src scripts vite.config.ts vitest.config.ts",
+    "lint": "biome check src scripts integration vite.config.ts vitest.config.ts",
+    "format": "biome check --write src scripts integration vite.config.ts vitest.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "node scripts/e2e.mjs"
