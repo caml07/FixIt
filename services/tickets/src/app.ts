@@ -4,6 +4,8 @@ import type { Pool } from "pg";
 import { authenticate } from "./auth.js";
 import { mutationRoutes } from "./mutations.js";
 import { internalRoutes } from "./internal.js";
+import { attachmentRoutes } from "./attachments.js";
+import type { AttachmentStorage } from "./attachment-storage.js";
 
 export interface AppDependencies {
   database: Pool;
@@ -12,6 +14,7 @@ export interface AppDependencies {
   publicOrigin?: string;
   verifyCsrf?: (token: string, sessionToken: string) => Promise<boolean>;
   chatServiceToken?: string;
+  attachmentStorage?: AttachmentStorage;
 }
 
 export function createApp(isDraining: () => boolean = () => false, dependencies?: AppDependencies) {
@@ -192,6 +195,7 @@ export function createApp(isDraining: () => boolean = () => false, dependencies?
     }
   });
   app.use(mutationRoutes(dependencies));
+  app.use(attachmentRoutes(dependencies));
   app.use(internalRoutes(dependencies));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof SyntaxError || (error instanceof Error && error.name === "PayloadTooLargeError")) {

@@ -24,6 +24,18 @@ On 27 November 2026, Node 24 lint, typecheck, build, Prisma validation and all 1
 
 OpenAPI lists HTTP `429` for reassignment. A rate-limiting policy for that route remains pending. JetStream publishing and the real Auth–Tickets–Chat integration remain unverified. Timeline retrieval is still deferred pending the pagination contract decision described above.
 
+## Increment 5
+
+Set `TICKETS_ATTACHMENT_DIRECTORY` to an existing absolute directory on a private, persistent local volume. Keep it outside every web root and give filesystem access only to the Tickets service account and authorized operators. On Windows, restrict the directory ACL. An unset or inaccessible directory makes attachment storage unavailable. The service ships the local adapter and has no cloud storage configuration.
+
+The owning Reporter can send one `file` and its ticket's current `expectedVersion` as multipart form data while the ticket is `OPEN`. Tickets checks file structure against the submitted MIME and enforces the file and ticket quotas. This validates the format and basic structure without decoding every frame or scanning for malware. Tickets bounds upload admission to four concurrent requests per process and responds with `429` when those slots are occupied. The real Auth CSRF verifier is still pending, so the running service rejects uploads. The integration tests use a session-bound synthetic verifier.
+
+The owner, current assignee, and Admin can download through Tickets after fresh session and ticket authorization. Downloads stream from private storage with `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`. Both responses omit the private storage key and any storage URL. Uploads store a SHA-256 checksum, increment the ticket version, and write `ATTACHMENT_ADDED` in the metadata transaction. Attachments have no outbox event.
+
+Tickets removes newly written files after a confirmed metadata rollback. A process crash, deletion failure, or an unconfirmed commit can leave a file requiring reconciliation. When Tickets logs a reconciliation diagnostic, check the reported key against committed metadata after PostgreSQL recovers. Preserve referenced files and remove an unreferenced file only after confirming the upload has finished. Back up the attachment directory alongside PostgreSQL.
+
+Increment 5 verification used Node 24.22.3 on Windows with disposable PostgreSQL 17. All 13 package tests passed, including an observed database lock wait between competing uploads, rollback and failed-deletion diagnostics. The MP4 quota tests used synthetic container data. Install, lint, typecheck, build, Prisma validation, both npm audits, OpenAPI structural validation and the migration smoke test passed. Redocly reported the existing five warnings. npm still reported the Prisma `allowScripts` warning. The Markdown check passed in a disposable Linux container. The application CI wrapper failed to spawn npm on Windows, so its package checks were run individually. The complete Linux application runner remains unverified. No test containers or temporary fixture directories remained.
+
 ## Increment 1 verification
 
 On 27 November 2026, the owner verified `GET /health` in Postman with HTTP 200, the expected envelope and a UUID request ID. The Node 24 Windows suite passed 9 tests, including both migrations, restricted database access, shutdown behavior and simulated Docker create/start timeouts.

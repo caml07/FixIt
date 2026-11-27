@@ -12,7 +12,11 @@
     "start": "node dist/server.js",
     "db:validate": "prisma validate --config prisma.config.ts"
   },
-  "dependencies": { "express": "5.3.0", "pg": "8.23.1" },
+  "dependencies": {
+    "@fastify/busboy": "3.2.2",
+    "express": "5.3.0",
+    "pg": "8.23.1"
+  },
   "devDependencies": {
     "@types/express": "5.0.6",
     "@types/node": "24.19.2",

@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { openTicketsDatabase } from "./database.js";
+import { FileAttachmentStorage } from "./attachment-storage.js";
 
 export function manageShutdown(server: Server, pool?: { end(): Promise<void> }, timeoutMs = 5000) {
   let shutdownPromise: Promise<void> | undefined;
@@ -50,7 +51,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const configuredChatToken = process.env.TICKETS_CHAT_SERVICE_TOKEN;
   const chatServiceToken = configuredChatToken && configuredChatToken.length >= 32 ? configuredChatToken : undefined;
   const database = databaseUrl && authUrl && serviceToken ? openTicketsDatabase(databaseUrl) : undefined;
-  const dependencies = database && authUrl && serviceToken ? { database, authUrl, serviceToken, chatServiceToken } : undefined;
+  const attachmentDirectory = process.env.TICKETS_ATTACHMENT_DIRECTORY;
+  const attachmentStorage = attachmentDirectory ? new FileAttachmentStorage(attachmentDirectory) : undefined;
+  const dependencies = database && authUrl && serviceToken ? { database, authUrl, serviceToken, chatServiceToken, attachmentStorage } : undefined;
   const server = createServer(createApp(() => false, dependencies));
   const shutdown = manageShutdown(server, database);
   server.listen(port, host);
