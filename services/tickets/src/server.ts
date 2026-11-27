@@ -1,9 +1,11 @@
 import { createServer, type Server } from "node:http";
 import { pathToFileURL } from "node:url";
 import { createApp } from "./app.js";
-import { loadConfig } from "./config.js";
-import { openTicketsDatabase } from "./database.js";
+import { loadConfig, loadOutboxConfig } from "./config.js";
+import { openOutboxDatabase, openTicketsDatabase } from "./database.js";
 import { FileAttachmentStorage } from "./attachment-storage.js";
+import { createJetStreamPublisher } from "./jetstream-publisher.js";
+import { startOutboxWorker } from "./outbox-worker.js";
 
 export function manageShutdown(server: Server, pool?: { end(): Promise<void> }, timeoutMs = 5000) {
   let shutdownPromise: Promise<void> | undefined;
@@ -45,6 +47,7 @@ export function manageShutdown(server: Server, pool?: { end(): Promise<void> }, 
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { port, host } = loadConfig();
+  const outboxConfig = loadOutboxConfig();
   const databaseUrl = process.env.TICKETS_DATABASE_URL;
   const authUrl = process.env.AUTH_INTERNAL_URL;
   const serviceToken = process.env.TICKETS_AUTH_SERVICE_TOKEN;
@@ -55,9 +58,26 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const attachmentStorage = attachmentDirectory ? new FileAttachmentStorage(attachmentDirectory) : undefined;
   const dependencies = database && authUrl && serviceToken ? { database, authUrl, serviceToken, chatServiceToken, attachmentStorage } : undefined;
   const server = createServer(createApp(() => false, dependencies));
-  const shutdown = manageShutdown(server, database);
+  const outboxPool = outboxConfig && databaseUrl ? openOutboxDatabase(databaseUrl) : undefined;
+  const worker = outboxPool && outboxConfig ? startOutboxWorker(outboxPool, createJetStreamPublisher(outboxConfig)) : undefined;
+  let outboxClosing: Promise<void> | undefined;
+  function stopOutbox() {
+    return outboxClosing ??= (async () => {
+      try {
+        await worker?.stop();
+      } finally {
+        await outboxPool?.end();
+      }
+    })();
+  }
+  const shutdown = manageShutdown(server, {
+    async end() {
+      await Promise.all([database?.end(), stopOutbox()]);
+    }
+  }, worker ? 8000 : 5000);
   server.listen(port, host);
   function onSignal() {
+    void stopOutbox().catch(() => {});
     void shutdown().catch(() => {
       process.exitCode = 1;
       process.exit(1);
