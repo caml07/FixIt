@@ -18,7 +18,7 @@ Local lint passed on 2026-11-23; this verifies template structure/schema for the
 
 ## Preflight before any AWS action
 
-1. Confirm instructor substitutions for VPC peering, two VMs, ICMP, S3 website and VM alarm.
+1. Follow the [rubric comparison](../../docs/017.Cloud-Evaluation.md#academic-equivalence-and-evidence). The instructor permits adaptations with contrast, as reported by the user on November 26. Retain the static S3 website and screenshot; collect replacement evidence for VPC peering, VMs, ICMP and VM alarm.
 2. Check root MFA, account plan, credits, permitted region and service eligibility, quotas, existing CIDR overlap and at least two available AZs. Verify the smoke image digest before running it. Set budget alert and obtain explicit authorization for each stack/session. Budget alerts do not guarantee a hard spending cap.
 3. Prepare annual AWS Pricing Calculator estimate and short-session budget including NAT, public IPv4, Fargate (0.25 vCPU / 0.5 GiB), CloudWatch, S3/ECR and future RDS/Atlas. Review current region-specific charges.
 4. Use authorized AWS CLI v2 credentials (never root access keys). Review change sets before executing them. For the completed foundation commands and results, see the deployment record; smoke commands remain unexecuted.
@@ -47,7 +47,7 @@ aws cloudformation wait change-set-create-complete --stack-name fixit-session --
 aws cloudformation describe-change-set --stack-name fixit-session --change-set-name smoke-review --region us-east-1
 ```
 
-Review the IAM role and billable resources. Execute only after authorization. Record the actual ECS task RUNNING, task private ENI/no public IP, NAT route, startup log, alarm configuration and status, and the isolated data route table with no Internet default route. An image pull and CloudWatch startup log provide evidence of outbound connectivity, not ICMP tests or RDS isolation. For S3, upload two small fictitious versions under the same key and record version IDs/retrieval after permission. Do not upload real credentials/data. Do not claim a public website or a complete deployed application.
+Review the IAM role and billable resources. Execute only after authorization. Record the actual ECS task RUNNING, task private ENI/no public IP, NAT route, startup log, alarm configuration and status, and the isolated data route table with no Internet default route. An image pull and CloudWatch startup log provide evidence of outbound connectivity, not ICMP tests or RDS isolation. For S3, upload two small fictitious versions under the same key and record version IDs/retrieval after permission. Do not upload real credentials/data. The smoke image pull and logs do not replace an explicit HTTPS test. Extend the smoke task if that test is needed; do not claim an active isolation test from route inspection. For A2, use a separate static website bucket and capture its actual endpoint. See the [IAM access record](IAM-LAB-2026-11-26.md). Do not claim a website or integrated application has been deployed until verified.
 
 ## Teardown
 
