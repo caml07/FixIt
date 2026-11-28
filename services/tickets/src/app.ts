@@ -2,10 +2,11 @@ import express, { type Request, type Response, type NextFunction } from "express
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import { checkoutTicketsDatabase } from "./database.js";
-import { authenticate } from "./auth.js";
+import { authenticate, authenticateMutation } from "./auth.js";
 import { mutationRoutes } from "./mutations.js";
 import { internalRoutes } from "./internal.js";
 import { attachmentRoutes } from "./attachments.js";
+import { timelineRoutes } from "./timeline.js";
 import type { AttachmentStorage } from "./attachment-storage.js";
 
 export interface AppDependencies {
@@ -13,7 +14,6 @@ export interface AppDependencies {
   authUrl: string;
   serviceToken: string;
   publicOrigin?: string;
-  verifyCsrf?: (token: string, sessionToken: string) => Promise<boolean>;
   chatServiceToken?: string;
   attachmentStorage?: AttachmentStorage;
 }
@@ -49,16 +49,11 @@ export function createApp(isDraining: () => boolean = () => false, dependencies?
       res.status(status).json({ error: { code, message }, requestId });
     if (!req.get("cookie")) return error(401, "UNAUTHENTICATED", "Session is invalid.");
     if (!dependencies) return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
-    const session = await authenticate(req.get("cookie") ?? "", dependencies.authUrl, dependencies.serviceToken);
+    const session = await authenticateMutation(req, dependencies);
+    if (session.kind === "forbidden") return error(403, "FORBIDDEN", "Request verification failed.");
     if (session.kind === "unavailable") return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
     if (session.kind === "invalid") return error(401, "UNAUTHENTICATED", "Session is invalid.");
     if (session.role !== "REPORTER") return error(403, "FORBIDDEN", "Permission denied.");
-    const csrf = req.get("x-csrf-token");
-    if (!dependencies.publicOrigin || req.get("origin") !== dependencies.publicOrigin ||
-        req.get("sec-fetch-site") === "cross-site" || !csrf || !dependencies.verifyCsrf ||
-        !(await dependencies.verifyCsrf(csrf, session.sessionToken).catch(() => false))) {
-      return error(403, "FORBIDDEN", "Request verification failed.");
-    }
     const body: unknown = req.body;
     if (typeof body !== "object" || body === null || Array.isArray(body)) {
       return error(422, "VALIDATION_ERROR", "Invalid ticket.");
@@ -198,6 +193,7 @@ export function createApp(isDraining: () => boolean = () => false, dependencies?
   });
   app.use(mutationRoutes(dependencies));
   app.use(attachmentRoutes(dependencies));
+  app.use(timelineRoutes(dependencies));
   app.use(internalRoutes(dependencies));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof SyntaxError || (error instanceof Error && error.name === "PayloadTooLargeError")) {

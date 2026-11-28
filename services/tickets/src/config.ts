@@ -4,7 +4,12 @@ export function loadConfig() {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error("Invalid PORT");
   }
-  return { port, host: process.env.TICKETS_BIND_HOST ?? "127.0.0.1" };
+  const publicOrigin = process.env.TICKETS_PUBLIC_ORIGIN;
+  if (publicOrigin !== undefined && (!URL.canParse(publicOrigin) ||
+      new URL(publicOrigin).origin !== publicOrigin || !publicOrigin.startsWith("https://"))) {
+    throw new Error("Invalid TICKETS_PUBLIC_ORIGIN");
+  }
+  return { port, host: process.env.TICKETS_BIND_HOST ?? "127.0.0.1", publicOrigin };
 }
 
 export function loadOutboxConfig(env = process.env) {

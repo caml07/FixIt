@@ -6,7 +6,7 @@ import type { AppDependencies } from "./app.js";
 import { attachmentKey } from "./attachment-storage.js";
 import { readAttachmentUpload } from "./attachment-upload.js";
 import { attachmentTypes, videoLimit, type AttachmentType } from "./attachment-media.js";
-import { authenticate } from "./auth.js";
+import { authenticate, authenticateMutation } from "./auth.js";
 import { checkoutTicketsDatabase, isDatabaseRejection } from "./database.js";
 
 const storageTimeoutMs = 3000;
@@ -35,7 +35,17 @@ export function attachmentRoutes(dependencies?: AppDependencies) {
   router.post(ticketPath, async (req, res) => {
     const requestId = randomUUID();
     const error = (status: number, code: string, message: string) => {
-      if (!req.complete) res.set("Connection", "close");
+      if (!req.complete) {
+        const length = Number(req.get("content-length"));
+        if (!Number.isSafeInteger(length) || length > 16 * 1024) {
+          res.set("Connection", "close");
+        } else {
+          // Give Node a bounded interval to discard a small rejected body without cutting off its response.
+          const deadline = setTimeout(() => { if (!req.complete) req.destroy(); }, 1000);
+          deadline.unref();
+          req.once("close", () => clearTimeout(deadline));
+        }
+      }
       return res.status(status).json({ error: { code, message }, requestId });
     };
     const unavailable = () => {
@@ -46,16 +56,11 @@ export function attachmentRoutes(dependencies?: AppDependencies) {
     const cookie = req.get("cookie");
     if (!cookie) return error(401, "UNAUTHENTICATED", "Session is invalid.");
     if (!dependencies) return unavailable();
-    const session = await authenticate(cookie, dependencies.authUrl, dependencies.serviceToken);
+    const session = await authenticateMutation(req, dependencies);
+    if (session.kind === "forbidden") return error(403, "FORBIDDEN", "Request verification failed.");
     if (session.kind === "unavailable") return unavailable();
     if (session.kind === "invalid") return error(401, "UNAUTHENTICATED", "Session is invalid.");
     if (session.role !== "REPORTER") return error(403, "FORBIDDEN", "Permission denied.");
-    const csrf = req.get("x-csrf-token");
-    if (!dependencies.publicOrigin || req.get("origin") !== dependencies.publicOrigin ||
-        req.get("sec-fetch-site") === "cross-site" || !csrf || !dependencies.verifyCsrf ||
-        !(await dependencies.verifyCsrf(csrf, session.sessionToken).catch(() => false))) {
-      return error(403, "FORBIDDEN", "Request verification failed.");
-    }
     const { ticketId } = req.params;
     if (!attachmentKey.test(ticketId)) return error(404, "NOT_FOUND", "Ticket not found.");
     const storage = dependencies.attachmentStorage;

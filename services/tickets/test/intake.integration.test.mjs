@@ -46,7 +46,7 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
       req.on("end", () => {
         assert.equal(req.url, "/internal/v1/sessions/introspect");
         assert.equal(req.headers.authorization, "Bearer test");
-        const token = JSON.parse(body).sessionToken;
+        const { sessionToken: token, csrfToken } = JSON.parse(body);
         const identities = {
           valid: ["550e8400-e29b-41d4-a716-446655440000", "REPORTER"],
           other: ["550e8400-e29b-41d4-a716-446655440002", "REPORTER"],
@@ -57,11 +57,13 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
         const identity = identities[token];
         const active = Boolean(identity) || token === "expired";
         res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ data: active ? { active: true, subject: { userId: identity?.[0] ?? "550e8400-e29b-41d4-a716-446655440000", role: identity?.[1] ?? "REPORTER" }, expiresAt: token === "expired" ? "2000-01-01T00:00:00Z" : "2099-01-01T00:00:00Z" } : { active: false }, requestId: "550e8400-e29b-41d4-a716-446655440001" }));
+        const data = active ? { active, subject: { userId: identity?.[0] ?? "550e8400-e29b-41d4-a716-446655440000", role: identity?.[1] ?? "REPORTER" }, expiresAt: token === "expired" ? "2000-01-01T00:00:00Z" : "2099-01-01T00:00:00Z" } : { active };
+        if (csrfToken !== undefined && csrfToken !== "incomplete") data.csrfValid = active && csrfToken === "synthetic-csrf";
+        res.end(JSON.stringify({ data, requestId: "550e8400-e29b-41d4-a716-446655440001" }));
       });
     }).listen(0, "127.0.0.1");
     await new Promise((resolve) => auth.once("listening", resolve));
-    server = createApp(() => false, { database: pool, authUrl: `http://127.0.0.1:${auth.address().port}`, serviceToken: "test", chatServiceToken, publicOrigin: "https://fixit.invalid", verifyCsrf: async (token) => token === "synthetic-csrf" }).listen(0, "127.0.0.1");
+    server = createApp(() => false, { database: pool, authUrl: `http://127.0.0.1:${auth.address().port}`, serviceToken: "test", chatServiceToken, publicOrigin: "https://fixit.invalid" }).listen(0, "127.0.0.1");
     await new Promise((resolve) => server.once("listening", resolve));
     const url = `http://127.0.0.1:${server.address().port}/api/v1/categories`;
     assert.equal((await fetch(url)).status, 401);
@@ -110,6 +112,7 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
     assert.equal((await fetch(ticketUrl + "?cursor=invalid", { headers: { cookie: "__Host-fixit_session=valid" } })).status, 422);
     assert.equal((await fetch(ticketUrl, { method: "POST", headers: { ...headers, cookie: "__Host-fixit_session=agent" }, body: JSON.stringify(ticket) })).status, 403);
     assert.equal((await fetch(ticketUrl, { method: "POST", headers: { ...headers, "x-csrf-token": "wrong" }, body: JSON.stringify(ticket) })).status, 403);
+    assert.equal((await fetch(ticketUrl, { method: "POST", headers: { ...headers, "x-csrf-token": "incomplete" }, body: JSON.stringify(ticket) })).status, 503);
     const missingCsrf = { ...headers };
     delete missingCsrf["x-csrf-token"];
     assert.equal((await fetch(ticketUrl, { method: "POST", headers: missingCsrf, body: JSON.stringify(ticket) })).status, 403);
@@ -122,7 +125,7 @@ test("intake and authorized reads enforce contracts against PostgreSQL", { timeo
     }
     assert.equal((await fetch(ticketUrl, { method: "POST", headers, body: JSON.stringify({ ...ticket, reporterUrgency: ["HIGH"] }) })).status, 422);
     assert.equal((await fetch(ticketUrl, { method: "POST", headers, body: "{" })).status, 422);
-    const failClosed = createApp(() => false, { database: pool, authUrl: `http://127.0.0.1:${auth.address().port}`, serviceToken: "test", publicOrigin: "https://fixit.invalid" }).listen(0, "127.0.0.1");
+    const failClosed = createApp(() => false, { database: pool, authUrl: `http://127.0.0.1:${auth.address().port}`, serviceToken: "test" }).listen(0, "127.0.0.1");
     await new Promise((resolve) => failClosed.once("listening", resolve));
     try {
       assert.equal((await fetch(`http://127.0.0.1:${failClosed.address().port}/api/v1/tickets`, { method: "POST", headers, body: JSON.stringify(ticket) })).status, 403);

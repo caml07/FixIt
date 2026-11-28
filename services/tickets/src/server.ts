@@ -46,7 +46,7 @@ export function manageShutdown(server: Server, pool?: { end(): Promise<void> }, 
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const { port, host } = loadConfig();
+  const { port, host, publicOrigin } = loadConfig();
   const outboxConfig = loadOutboxConfig();
   const databaseUrl = process.env.TICKETS_DATABASE_URL;
   const authUrl = process.env.AUTH_INTERNAL_URL;
@@ -56,7 +56,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const database = databaseUrl && authUrl && serviceToken ? openTicketsDatabase(databaseUrl) : undefined;
   const attachmentDirectory = process.env.TICKETS_ATTACHMENT_DIRECTORY;
   const attachmentStorage = attachmentDirectory ? new FileAttachmentStorage(attachmentDirectory) : undefined;
-  const dependencies = database && authUrl && serviceToken ? { database, authUrl, serviceToken, chatServiceToken, attachmentStorage } : undefined;
+  const dependencies = database && authUrl && serviceToken ? { database, authUrl, serviceToken, publicOrigin, chatServiceToken, attachmentStorage } : undefined;
   const server = createServer(createApp(() => false, dependencies));
   const outboxPool = outboxConfig && databaseUrl ? openOutboxDatabase(databaseUrl) : undefined;
   const worker = outboxPool && outboxConfig ? startOutboxWorker(outboxPool, createJetStreamPublisher(outboxConfig)) : undefined;

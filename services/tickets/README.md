@@ -10,25 +10,25 @@ Categories and authorized ticket reads use Auth session introspection and the Ti
 
 When the list scope is omitted, Reporter defaults to `mine`, Support Agent to `assigned`, and Admin to `all`, as selected by Valeria. Explicit scopes remain subject to role and resource authorization.
 
-Ticket creation validates session and role, but the real Auth handoff for session-bound CSRF verification remains unresolved. The running service therefore rejects creation rather than accepting an unverified token. Successful creation is tested with a synthetic verifier confined to the integration test. Integration with real Auth and Chat remains unverified.
+Ticket creation and other browser mutations use the session-bound Auth introspection described under OpenAPI 0.5.0 integration below.
 
-The running service also rejects ticket edit, claim, status, and priority mutations until the Auth CSRF handoff is resolved. Timeline entries are written transactionally. The timeline retrieval endpoint remains deferred because the team must record the response for invalid pagination in the frozen contract before it is implemented.
+Timeline entries are written transactionally and available through the authorized timeline endpoint.
 
 ## Increment 4
 
 The Chat service uses a separate bearer credential for the internal authorization, audience, and snapshot endpoints. Configure `TICKETS_CHAT_SERVICE_TOKEN` in the Tickets process with at least 32 characters, distinct from `TICKETS_AUTH_SERVICE_TOKEN`. Keep these credentials outside the repository and expose `/internal/v1` only on the private service network.
 
-Admin reassignment consults Auth's contracted agent-eligibility endpoint for each request, then records the reassignment, timeline and outbox together in PostgreSQL. The inspected Auth branch has not yet implemented that endpoint. The running service also lacks a coordinated CSRF verifier, so reassignment remains unavailable in the real integration. The PostgreSQL tests use synthetic Auth and Chat fixtures to exercise eligibility, concurrent version checks, rollback, audience and snapshot behavior. Eligibility can change between the Auth check and the PostgreSQL commit; that cross-service race remains to be tested with the real services.
+Admin reassignment consults Auth's contracted agent-eligibility endpoint, then records the reassignment, timeline and outbox together in PostgreSQL. Eligibility can change after the Auth check and before the Tickets commit. A subsequent request from a deactivated agent is denied.
 
 On 27 November 2026, Node 24 lint, typecheck, build, Prisma validation and all 10 package tests passed on Windows. The integration test used disposable PostgreSQL 17 and synthetic Auth/Chat credentials, including two concurrent reassignment requests on separate connections, a forced outbox failure, former-assignee denial and paginated snapshots. Both npm audits reported zero vulnerabilities. The OpenAPI structural and migration smoke checks passed; Redocly reported five warnings. The Markdown checker failed on its existing Windows path-separator issue.
 
-OpenAPI lists HTTP `429` for reassignment. A rate-limiting policy for that route remains pending. The real Auth–Tickets–Chat integration remains unverified. Timeline retrieval is still deferred pending the pagination contract decision described above.
+OpenAPI lists HTTP `429` for reassignment. A rate-limiting policy for that route remains pending. The complete Auth–Tickets–Chat integration remains unverified.
 
 ## Increment 5
 
 Set `TICKETS_ATTACHMENT_DIRECTORY` to an existing absolute directory on a private, persistent local volume. Keep it outside every web root and give filesystem access only to the Tickets service account and authorized operators. On Windows, restrict the directory ACL. An unset or inaccessible directory makes attachment storage unavailable. The service ships the local adapter and has no cloud storage configuration.
 
-The owning Reporter can send one `file` and its ticket's current `expectedVersion` as multipart form data while the ticket is `OPEN`. Tickets checks file structure against the submitted MIME and enforces the file and ticket quotas. This validates the format and basic structure without decoding every frame or scanning for malware. Tickets bounds upload admission to four concurrent requests per process and responds with `429` when those slots are occupied. The real Auth CSRF verifier is still pending, so the running service rejects uploads. The integration tests use a session-bound synthetic verifier.
+The owning Reporter can send one `file` and its ticket's current `expectedVersion` as multipart form data while the ticket is `OPEN`. Tickets checks file structure against the submitted MIME and enforces the file and ticket quotas. This validates the format and basic structure without decoding every frame or scanning for malware. Tickets bounds upload admission to four concurrent requests per process and responds with `429` when those slots are occupied. Uploads require the same session-bound CSRF check as other mutations.
 
 The owner, current assignee, and Admin can download through Tickets after fresh session and ticket authorization. Downloads stream from private storage with `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`. Both responses omit the private storage key and any storage URL. Uploads store a SHA-256 checksum, increment the ticket version, and write `ATTACHMENT_ADDED` in the metadata transaction. Attachments have no outbox event.
 
@@ -71,6 +71,18 @@ An attachment write waits up to 3 seconds and stops waiting sooner if its databa
 The storage deadlines bound application waits. Native filesystem work can continue after the response, and a permanently stalled write can hold its upload slot until process restart. The existing server shutdown budget still applies. Forced process exit during late cleanup and a lost COMMIT response remain unverified. See [Linux verification](#linux-verification) for the process-level signal check.
 
 All 23 package tests passed on Node 24.22.3. Disposable PostgreSQL 17 tests terminated an idle pooled connection and a checked-out upload connection. They verified pool recovery, statement timeout, a `503` response before stalled storage resumed, lock release, and cleanup of files written after the response. The outbox tests passed with disposable NATS. Lint, typecheck, build, Prisma validation, and OpenAPI checks passed. Redocly reported five existing warnings. Both npm audits reported zero vulnerabilities and no labeled Tickets test containers remained.
+
+## OpenAPI 0.5.0 integration
+
+Set `TICKETS_PUBLIC_ORIGIN` to the exact HTTPS origin configured in Auth. Browser mutations require that Origin and accept Fetch Metadata marked `same-origin` when present. Tickets asks Auth to verify the session and the CSRF token in one introspection request. Inactive sessions return `401`, rejected CSRF or browser origin checks return `403`, and unavailable Auth or incomplete decisions return `503`. Reads and internal Chat authorization use session introspection without CSRF. Keep `AUTH_CSRF_KEY` within Auth.
+
+`GET /api/v1/tickets/{ticketId}/events` uses an opaque ticket-scoped cursor and a default limit of 50. A valid limit is a single integer from 1 through 100. Invalid or repeated pagination parameters return `422` for visible tickets. Session or ticket visibility checks take precedence over pagination errors.
+
+To run the real-Auth test, unpack `git archive 37ffc4f` into a scratch directory outside the checkout. In that directory run `npm ci` and `npm run db:generate`. Set `FIXIT_PINNED_AUTH_DIR` to the absolute scratch directory and run `npm test` in Tickets using Node 24 and the local disposable fixtures. The test starts both production entry points, applies the canonical migrations to a fresh PostgreSQL 17 instance, and provisions separate Auth and Tickets runtime roles. Without the opt-in directory, the suite skips the real-Auth case.
+
+On 28 November 2026, all 24 Tickets tests passed with Auth pinned to `37ffc4f`. The real-service test covered login and upload, cross-session CSRF, Origin and Fetch Metadata rejection, provisional and expired sessions, logout, Auth failure, the timeline envelope and pagination errors, and the reassignment race. It confirmed that deactivation after eligibility can still leave the disabled agent assigned, while later requests from that agent are rejected. The fixture role grants include column-level UPDATE on `categories.is_active` for the existing category row lock. Production grants still require review.
+
+Lint, typecheck, build, Prisma validation, migration smoke, Linux documentation links, and OpenAPI checks passed. Redocly reported five existing warnings and both npm audits reported zero vulnerabilities. This was a loopback integration check. Browser TLS, NGINX, Cloudflare Tunnel, and the full Linux application CI run remain separate.
 
 ## Linux verification
 

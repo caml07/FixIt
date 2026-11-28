@@ -114,9 +114,12 @@ test("private attachments enforce access, quotas, concurrency and compensation i
   const auth = createServer(async (req, res) => {
     let body = "";
     for await (const chunk of req) body += chunk;
-    const subject = identities.get(JSON.parse(body).sessionToken);
+    const { sessionToken, csrfToken } = JSON.parse(body);
+    const subject = identities.get(sessionToken);
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ data: subject ? { active: true, subject, expiresAt: "2099-01-01T00:00:00Z" } : { active: false }, requestId: randomUUID() }));
+    const data = subject ? { active: true, subject, expiresAt: "2099-01-01T00:00:00Z" } : { active: false };
+    if (csrfToken !== undefined) data.csrfValid = Boolean(subject) && csrfToken === "synthetic-" + sessionToken;
+    res.end(JSON.stringify({ data, requestId: randomUUID() }));
   }).listen(0, "127.0.0.1");
   teardown.push(() => new Promise((resolve) => {
     auth.close(resolve);
@@ -125,8 +128,7 @@ test("private attachments enforce access, quotas, concurrency and compensation i
   await new Promise((resolve) => auth.once("listening", resolve));
   const publicOrigin = "https://fixit.invalid";
   const server = createApp(() => false, { database: pool, attachmentStorage,
-    authUrl: `http://127.0.0.1:${auth.address().port}`, serviceToken: randomUUID(), publicOrigin,
-    verifyCsrf: async (token, session) => token === "synthetic-" + session }).listen(0, "127.0.0.1");
+    authUrl: `http://127.0.0.1:${auth.address().port}`, serviceToken: randomUUID(), publicOrigin }).listen(0, "127.0.0.1");
   teardown.push(() => new Promise((resolve) => {
     server.close(resolve);
     server.closeAllConnections();
@@ -141,7 +143,9 @@ test("private attachments enforce access, quotas, concurrency and compensation i
     if (extra) body.append("expectedVersion", version);
     return fetch(endpoint(id), { method: "POST", headers: {
       cookie: cookie(user), origin: publicOrigin, "x-csrf-token": "synthetic-" + user, ...headers
-    }, body });
+    }, body }).catch((cause) => {
+      throw new Error(`Upload request failed for ${type} (${bytes.length} bytes)`, { cause });
+    });
   }
   const download = (ticket, id, user) => fetch(endpoint(ticket) + "/" + id, { headers: user ? { cookie: cookie(user) } : {} });
   const ticket = await makeTicket();

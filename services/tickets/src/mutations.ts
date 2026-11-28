@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import express from "express";
 import { randomUUID } from "node:crypto";
 import type { AppDependencies } from "./app.js";
-import { authenticate } from "./auth.js";
+import { authenticateMutation } from "./auth.js";
 import { checkoutTicketsDatabase } from "./database.js";
 
 type Action = "edit" | "claim" | "status" | "priority" | "assignee";
@@ -51,7 +51,8 @@ export function mutationRoutes(dependencies?: AppDependencies) {
       res.status(status).json({ error: { code, message }, requestId });
     if (!req.get("cookie")) return error(401, "UNAUTHENTICATED", "Session is invalid.");
     if (!dependencies) return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
-    const session = await authenticate(req.get("cookie") ?? "", dependencies.authUrl, dependencies.serviceToken);
+    const session = await authenticateMutation(req, dependencies);
+    if (session.kind === "forbidden") return error(403, "FORBIDDEN", "Request verification failed.");
     if (session.kind === "invalid") return error(401, "UNAUTHENTICATED", "Session is invalid.");
     if (session.kind === "unavailable") return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
     if ((action === "edit" && session.role !== "REPORTER") ||
@@ -59,12 +60,6 @@ export function mutationRoutes(dependencies?: AppDependencies) {
         (action === "priority" && session.role === "REPORTER") ||
         (action === "assignee" && session.role !== "ADMIN")) {
       return error(403, "FORBIDDEN", "Permission denied.");
-    }
-    const csrf = req.get("x-csrf-token");
-    if (!dependencies.publicOrigin || req.get("origin") !== dependencies.publicOrigin ||
-        req.get("sec-fetch-site") === "cross-site" || !csrf || !dependencies.verifyCsrf ||
-        !(await dependencies.verifyCsrf(csrf, session.sessionToken).catch(() => false))) {
-      return error(403, "FORBIDDEN", "Request verification failed.");
     }
     const ticketId = req.params.ticketId;
     if (typeof ticketId !== "string" || !uuid.test(ticketId)) return error(404, "NOT_FOUND", "Ticket not found.");
