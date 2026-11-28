@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { once } from "node:events";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { test } from "node:test";
 import argon2 from "argon2";
 import { createAuthApp } from "../src/app.ts";
+import { readPasswordBlocklist } from "../src/config.ts";
 import { openAuthDatabase } from "../src/db.ts";
-import { tokenHash } from "../src/security.ts";
+import { passwordError, tokenHash } from "../src/security.ts";
 
 const dbUrl = process.env.FIXIT_TEST_DB_URL;
 const origin = "https://fixit.example.invalid";
@@ -14,8 +16,21 @@ const serviceTokenA = "tickets-synthetic-token-for-integration-only-0001";
 const serviceTokenB = "chat-synthetic-token-for-integration-only-0002";
 const csrfKey = "csrf-key-synthetic-for-integration-only-0003";
 
-test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", async () => {
+test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", async (t) => {
   assert.ok(dbUrl, "FIXIT_TEST_DB_URL must point to a disposable PostgreSQL test database.");
+  const corpusPath = process.env.FIXIT_TEST_PASSWORD_BLOCKLIST_FILE;
+  let corpusEntry;
+  const passwordBlocklist = new Set(["blocked integration password"]);
+  if (corpusPath) {
+    const digest = createHash("sha256").update(readFileSync(corpusPath)).digest("hex");
+    assert.equal(digest, "c2e5696882c603b76bb67a47ee970897e5a76fc4c3f5547abe3d0ca340c576e0");
+    const corpus = readPasswordBlocklist(corpusPath);
+    corpusEntry = [...corpus].find((entry) => passwordError(entry) === null);
+    assert.ok(corpusEntry, "The selected corpus must contain an eligible password outside the built-in list.");
+    for (const entry of corpus) passwordBlocklist.add(entry);
+  } else {
+    t.diagnostic("Real password corpus not supplied; only the synthetic blocklist is tested.");
+  }
   const db = openAuthDatabase(dbUrl);
   await db.$connect();
   const adminPassword = randomBytes(32).toString("base64url");
@@ -50,7 +65,7 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
   const app = createAuthApp({
     database, publicOrigin: origin,
     csrfKey, serviceTokens: [serviceTokenA, serviceTokenB],
-    passwordBlocklist: new Set(["blocked integration password"]),
+    passwordBlocklist,
   });
   const server = createServer(app);
   server.listen(0, "127.0.0.1");
@@ -173,6 +188,14 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     });
     assert.equal(blockedPassword.response.status, 422);
     assert.equal(blockedPassword.data.error.code, "WEAK_PASSWORD");
+    if (corpusEntry) {
+      const blockedCorpusPassword = await request("/api/v1/auth/password/activate", {
+        method: "POST", cookie: temporaryCookie, csrf: temporaryCsrf,
+        body: { currentPassword: firstTemporary, newPassword: corpusEntry },
+      });
+      assert.equal(blockedCorpusPassword.response.status, 422);
+      assert.equal(blockedCorpusPassword.data.error.code, "WEAK_PASSWORD");
+    }
     const newTeacherPassword = randomBytes(32).toString("base64url");
     const activation = await request("/api/v1/auth/password/activate", {
       method: "POST", cookie: temporaryCookie, csrf: temporaryCsrf,

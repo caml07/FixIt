@@ -26,6 +26,9 @@ permite seleccionar Docker.
 `npm run test:auth:security` ejecuta solo las pruebas unitarias sin BD.
 `node scripts/ci/check-apps.mjs` reproduce la CI de aplicaciones (incluye
 audit de dependencias de produccion).
+La suite de PostgreSQL incluye intercalaciones controladas: logout durante la
+lectura de sesion, desactivacion durante introspeccion y desactivacion durante
+login. Estas pruebas no demuestran todas las carreras posibles.
 
 Para ensayar la recuperacion de la base, ejecutar `check-auth.sh` con
 `FIXIT_AUTH_RECOVERY_TEST=1`. La prueba pausa y reanuda exclusivamente su
@@ -162,6 +165,10 @@ instaladas; no se ha preparado como probe de imagen de produccion.
   [guia oficial de Express](https://expressjs.com/en/guide/behind-proxies/)
   explica por que la configuracion debe coincidir con la topologia real. Las
   variables no convierten el almacenamiento en memoria en un limite compartido.
+  La prueba local `rate-limit.test.mjs` pasa peticiones a traves de un proxy
+  HTTP temporal que reenvia direcciones de cliente distintas: Auth las agrupa
+  por la IP directa del proxy y aplica una sola cuota. Esto reproduce el riesgo
+  de bloqueo compartido; no valida Cloudflare ni el proxy definitivo.
 - La blocklist incorporada es solo un minimo de desarrollo. Para produccion,
   provisionar un corpus local revisado de contrasenas comunes/comprometidas,
   con licencia y procedencia documentadas; no enviar contrasenas del usuario
@@ -171,13 +178,21 @@ instaladas; no se ha preparado como probe de imagen de produccion.
   parte de cada entrada. Esto por si solo no certifica cumplimiento de NIST.
   La lista NCSC de 100 000 contrasenas difundidas corresponde a un analisis de
   [2019](https://www.ncsc.gov.uk/sites/default/files/documents/NCSC_Annual%20Review_2019%20FINAL%20double%20pages%20V2.pdf)
-  y no se ha seleccionado como corpus definitivo. [Pwned Passwords](https://haveibeenpwned.com/Passwords)
-  permite descargar hashes para consulta local, pero el cargador actual espera
-  texto UTF-8, no hashes: no se puede usar directamente esa descarga. Quedan
-  pendientes la seleccion y validacion de fuente, formato, actualizacion y capacidad.
+  y se selecciono como fuente inicial en `dev`, documento 018, mediante una
+  revision fija de SecLists y su SHA-256. El corpus no es exhaustivo y su
+  cobertura de contrasenas largas necesita revision antes de produccion.
+  [Pwned Passwords](https://haveibeenpwned.com/Passwords) ofrece hashes para
+  consulta local, pero el cargador actual espera texto UTF-8, no hashes.
+  Para repetir la prueba HTTP con el archivo verificado, asignar su ruta absoluta
+  a `FIXIT_TEST_PASSWORD_BLOCKLIST_FILE` y ejecutar `scripts/ci/check-auth.sh`.
+  La prueba comprueba el SHA-256 fijado, carga el corpus y verifica rechazo en
+  activacion y aceptacion de una contrasena sintetica que no figura en la lista.
+  Esta variable es solo para pruebas; el despliegue usa
+  `AUTH_PASSWORD_BLOCKLIST_FILE` y requiere provisionamiento separado.
 - Los valores de timeout y Argon2id son defaults de desarrollo pendientes de
-  calibracion. Falta verificar seguridad concurrente, browser/proxy HTTPS,
-  readiness real, integracion Tickets/Chat y despliegue. No declarar G4 PASS.
+  calibracion. Las pruebas locales de concurrencia, navegador HTTPS, readiness e
+  integracion cubren escenarios limitados; quedan pendientes la topologia real,
+  la integracion completa con Tickets y Chat y el despliegue. No declarar G4 PASS.
 
 ## Decision de dependencias: override de Effect
 
