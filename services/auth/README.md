@@ -60,6 +60,19 @@ de sus ejecutables. Sin ambas variables se omite; no se considera aprobada por
 una suite que la haya omitido. El certificado local autofirmado solo se acepta
 en ese navegador de prueba y no configura la confianza del sistema.
 
+La prueba opcional de integracion Auth–Tickets se ejecuta con
+`FIXIT_AUTH_TICKETS_TEST=1` y `FIXIT_TICKETS_REVIEW_DIR` apuntando a una copia
+compilada de Tickets; `check-auth.sh` crea PostgreSQL temporal y roles de
+runtime separados. Usa los controladores HTTP reales de ambas ramas para
+comprobar lectura con sesion, aislamiento entre reporters, logout y fallo
+cerrado si Auth no responde. La configuracion publicada de Tickets rechaza
+mutaciones porque aun no conecta CSRF. Una segunda instancia solo de prueba
+inyecta un verificador que consulta Auth real y ensaya creacion, token invalido,
+origen invalido, reasignacion y elegibilidad. No modifica el codigo de Tickets
+ni habilita su servidor publicado. Una falla inyectada en ese verificador
+produce 403 en la version actual de Tickets; el contrato pide 503 si Auth no
+esta disponible. La integracion completa y esa distincion quedan pendientes.
+
 `npm run auth:check-db` verifica que `AUTH_DATABASE_URL` pueda conectar y
 consultar las tablas de usuarios y sesiones de Auth. Devuelve codigo 0 cuando
 la comprobacion pasa y 1 ante error, sin mostrar la URL ni credenciales. Usa

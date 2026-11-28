@@ -34,6 +34,14 @@ if [ "${FIXIT_AUTH_TTY_TEST:-0}" = 1 ]; then
 elif [ "${FIXIT_AUTH_RECOVERY_TEST:-0}" = 1 ]; then
   export FIXIT_RECOVERY_CONTAINER="$name" FIXIT_RECOVERY_ENGINE="$ENGINE"
   node --import tsx --test services/auth/test/database-recovery.integration.test.mjs
+elif [ "${FIXIT_AUTH_TICKETS_TEST:-0}" = 1 ]; then
+  tickets_password=$(openssl rand -hex 24)
+  "$ENGINE" exec -i "$name" psql -X -q -v ON_ERROR_STOP=1 -U postgres <<SQL
+CREATE ROLE fixit_ci_tickets LOGIN PASSWORD '$tickets_password';
+GRANT fixit_tickets_runtime TO fixit_ci_tickets;
+SQL
+  export FIXIT_TEST_TICKETS_DB_URL="postgresql://fixit_ci_tickets:$tickets_password@127.0.0.1:$port/postgres"
+  node --import tsx --test services/auth/test/auth-tickets.integration.test.mjs
 else
   npm run test:auth
 fi
