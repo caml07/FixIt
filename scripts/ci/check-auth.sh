@@ -31,6 +31,9 @@ SQL
 export FIXIT_TEST_DB_URL="postgresql://fixit_ci_auth:$runtime_password@127.0.0.1:$port/postgres"
 if [ "${FIXIT_AUTH_TTY_TEST:-0}" = 1 ]; then
   node --import tsx services/auth/test/admin-cli-tty.integration.test.mjs
+elif [ "${FIXIT_AUTH_RECOVERY_TEST:-0}" = 1 ]; then
+  export FIXIT_RECOVERY_CONTAINER="$name" FIXIT_RECOVERY_ENGINE="$ENGINE"
+  node --import tsx --test services/auth/test/database-recovery.integration.test.mjs
 else
   npm run test:auth
 fi

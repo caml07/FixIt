@@ -64,6 +64,7 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     if (method !== "GET" && opts.requestOrigin !== null) headers.Origin = opts.requestOrigin ?? origin;
     if (opts.cookie) headers.Cookie = opts.cookie;
     if (opts.csrf) headers["X-CSRF-Token"] = opts.csrf;
+    if (opts.fetchSite) headers["Sec-Fetch-Site"] = opts.fetchSite;
     if (opts.bearer) headers.Authorization = "Bearer " + opts.bearer;
     if (opts.body !== undefined) headers["Content-Type"] = "application/json";
     const response = await fetch(base + path, {
@@ -187,6 +188,18 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     const teacherCookie = teacherLogin.cookie;
     const teacherToken = teacherCookie.split("=")[1];
     const teacherSessionCsrf = await csrf(teacherCookie);
+    for (const options of [
+      { requestOrigin: "https://untrusted.invalid" },
+      { requestOrigin: null },
+      { fetchSite: "cross-site" },
+      { csrf: teacherSessionCsrf },
+    ]) {
+      const forbidden = await request(`/api/v1/admin/users/${teacherId}/disable`, {
+        method: "POST", cookie: adminCookie, csrf: adminCsrf, ...options,
+      });
+      assert.equal(forbidden.response.status, 403);
+      assert.equal((await request("/api/v1/auth/me", { cookie: teacherCookie })).response.status, 200);
+    }
     assert.equal((await request("/api/v1/admin/users", { cookie: teacherCookie })).response.status, 403);
     assert.equal((await request(`/api/v1/admin/users/${teacherId}/disable`, {
       method: "POST", cookie: teacherCookie, csrf: teacherSessionCsrf,

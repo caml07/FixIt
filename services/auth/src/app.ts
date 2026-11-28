@@ -25,6 +25,7 @@ type Options = {
   publicOrigin: string;
   csrfKey: string;
   serviceTokens: readonly [string, string];
+  checkReadiness?: () => Promise<boolean>;
   passwordBlocklist?: ReadonlySet<string>;
   sessionTimeouts?: { full: number; idle: number; temporary: number };
 };
@@ -49,6 +50,11 @@ const listInput = z.object({
   cursor: z.uuid().optional(),
 });
 const roles = ["REPORTER", "SUPPORT_AGENT"];
+const REQUEST_DEADLINE_MS = 5000;
+
+function responseClosed(res: Response): boolean {
+  return res.headersSent || res.destroyed;
+}
 
 function publicUser(user: UserInfo) {
   return {
@@ -58,9 +64,11 @@ function publicUser(user: UserInfo) {
 }
 
 function sendData(res: Response, data: unknown, status = 200) {
+  if (responseClosed(res)) return res;
   return res.status(status).json({ data, requestId: res.locals.requestId });
 }
 function sendError(res: Response, status: number, code: string, message: string) {
+  if (responseClosed(res)) return res;
   return res.status(status).json({ error: { code, message }, requestId: res.locals.requestId });
 }
 function isKnownUniqueError(error: unknown): boolean {
@@ -77,6 +85,18 @@ export function createAuthApp(options: Options) {
   app.use(helmet());
   app.use((_req, res, next) => {
     res.locals.requestId = randomUUID();
+    next();
+  });
+  app.use((req, res, next) => {
+    if (req.path === "/health" || req.path === "/internal/v1/auth/ready") return next();
+    const timer = setTimeout(() => {
+      if (responseClosed(res)) return;
+      res.setHeader("Cache-Control", "no-store");
+      sendError(res, 503, "SERVICE_UNAVAILABLE", "Tiempo de espera agotado; el resultado puede ser incierto.");
+    }, REQUEST_DEADLINE_MS);
+    const cleanup = () => clearTimeout(timer);
+    res.once("finish", cleanup);
+    res.once("close", cleanup);
     next();
   });
   app.use(express.json({ limit: "16kb" }));
@@ -134,6 +154,7 @@ export function createAuthApp(options: Options) {
 
   async function signedIn(req: Request, res: Response): Promise<Session | null> {
     const session = await sessionFor(req);
+    if (responseClosed(res)) return null;
     if (!session) sendError(res, 401, "UNAUTHENTICATED", "Sesión inválida o expirada.");
     return session;
   }
@@ -181,11 +202,13 @@ export function createAuthApp(options: Options) {
     const user = await database.user.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },
     });
+    if (responseClosed(res)) return;
     if (!user) {
       await argon2.verify(await fakePasswordHash, parsed.data.password);
       return sendError(res, 401, "INVALID_CREDENTIALS", "Credenciales incorrectas.");
     }
     const valid = await argon2.verify(user.passwordHash, cleanPassword(parsed.data.password));
+    if (responseClosed(res)) return;
     if (!valid || user.accountStatus === "DISABLED" ||
       (user.accountStatus === "PENDING_PASSWORD_CHANGE" &&
         (!user.temporaryExpiresAt || user.temporaryExpiresAt.getTime() <= Date.now()))) {
@@ -200,6 +223,7 @@ export function createAuthApp(options: Options) {
     const created = await database.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM auth.users WHERE id = ${user.id}::uuid FOR UPDATE`;
       const current = await tx.user.findUnique({ where: { id: user.id } });
+      if (responseClosed(res)) return false;
       if (!current || current.passwordHash !== user.passwordHash ||
         current.accountStatus !== user.accountStatus ||
         (limited && (!current.temporaryExpiresAt || current.temporaryExpiresAt.getTime() <= Date.now()))) {
@@ -214,6 +238,7 @@ export function createAuthApp(options: Options) {
       });
       return true;
     });
+    if (responseClosed(res)) return;
     if (!created) return sendError(res, 401, "INVALID_CREDENTIALS", "Credenciales incorrectas.");
     res.setHeader("Set-Cookie", setSessionCookie(token, lifetime));
     res.setHeader("Cache-Control", "no-store");
@@ -244,6 +269,7 @@ export function createAuthApp(options: Options) {
       where: { id: session.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (responseClosed(res)) return;
     res.setHeader("Set-Cookie", clearSessionCookie());
     res.status(204).end();
   });
@@ -267,6 +293,7 @@ export function createAuthApp(options: Options) {
       return sendError(res, 403, "FORBIDDEN", "La contraseña nueva debe ser diferente.");
     }
     const hashed = await hashPassword(parsed.data.newPassword);
+    if (responseClosed(res)) return;
     const now = new Date();
     const updated = await database.$transaction(async (tx) => {
       const result = await tx.user.updateMany({
@@ -283,6 +310,7 @@ export function createAuthApp(options: Options) {
       });
       return true;
     });
+    if (responseClosed(res)) return;
     if (!updated) return sendError(res, 409, "STATE_CHANGED", "La cuenta cambió durante la activación.");
     res.setHeader("Set-Cookie", clearSessionCookie());
     res.status(204).end();
@@ -318,6 +346,7 @@ export function createAuthApp(options: Options) {
     if (!parsed.success) return sendError(res, 422, "INVALID_INPUT", "Datos de cuenta inválidos.");
     const temporaryPassword = newSecret();
     const hash = await hashPassword(temporaryPassword);
+    if (responseClosed(res)) return;
     const normalizedEmail = parsed.data.email.trim().toLowerCase();
     try {
       const user = await database.$transaction(async (tx) => {
@@ -334,6 +363,7 @@ export function createAuthApp(options: Options) {
         });
         return created;
       });
+      if (responseClosed(res)) return;
       res.setHeader("Cache-Control", "no-store");
       return sendData(res, { user: publicUser(user), temporaryPassword }, 201);
     } catch (error) {
@@ -348,11 +378,13 @@ export function createAuthApp(options: Options) {
     const id = targetId(req, res);
     if (!id) return;
     const target = await database.user.findUnique({ where: { id } });
+    if (responseClosed(res)) return;
     if (!target) return sendError(res, 404, "NOT_FOUND", "Cuenta no encontrada.");
     if (target.role === "ADMIN") return sendError(res, 403, "FORBIDDEN", "Admin inicial protegido.");
     if (target.accountStatus === "DISABLED") return sendError(res, 409, "DISABLED", "Primero debe reactivar la cuenta.");
     const temporaryPassword = newSecret();
     const hash = await hashPassword(temporaryPassword);
+    if (responseClosed(res)) return;
     const changed = await database.$transaction(async (tx) => {
       const result = await tx.user.updateMany({
         where: { id, role: { in: roles }, accountStatus: { in: ["ACTIVE", "PENDING_PASSWORD_CHANGE"] }, passwordHash: target.passwordHash },
@@ -366,6 +398,7 @@ export function createAuthApp(options: Options) {
       await tx.accountAudit.create({ data: { subjectUserId: id, actorUserId: session.user.id, action: "PASSWORD_RESET" } });
       return true;
     });
+    if (responseClosed(res)) return;
     if (!changed) return sendError(res, 409, "STATE_CHANGED", "La cuenta cambió.");
     res.setHeader("Cache-Control", "no-store");
     return sendData(res, { temporaryPassword });
@@ -377,6 +410,7 @@ export function createAuthApp(options: Options) {
     const id = targetId(req, res);
     if (!id) return;
     const target = await database.user.findUnique({ where: { id } });
+    if (responseClosed(res)) return;
     if (!target) return sendError(res, 404, "NOT_FOUND", "Cuenta no encontrada.");
     if (target.role === "ADMIN") return sendError(res, 403, "FORBIDDEN", "Admin inicial protegido.");
     if (target.accountStatus === "DISABLED") return res.status(204).end();
@@ -392,6 +426,7 @@ export function createAuthApp(options: Options) {
       });
       return true;
     });
+    if (responseClosed(res)) return;
     if (!changed) return sendError(res, 409, "STATE_CHANGED", "La cuenta cambió.");
     res.status(204).end();
   });
@@ -402,11 +437,13 @@ export function createAuthApp(options: Options) {
     const id = targetId(req, res);
     if (!id) return;
     const target = await database.user.findUnique({ where: { id } });
+    if (responseClosed(res)) return;
     if (!target) return sendError(res, 404, "NOT_FOUND", "Cuenta no encontrada.");
     if (target.role === "ADMIN") return sendError(res, 403, "FORBIDDEN", "Admin inicial protegido.");
     if (target.accountStatus !== "DISABLED") return sendError(res, 409, "STATE_CHANGED", "La cuenta no está desactivada.");
     const temporaryPassword = newSecret();
     const hash = await hashPassword(temporaryPassword);
+    if (responseClosed(res)) return;
     const changed = await database.$transaction(async (tx) => {
       const result = await tx.user.updateMany({
         where: { id, role: { in: roles }, accountStatus: "DISABLED" },
@@ -422,10 +459,25 @@ export function createAuthApp(options: Options) {
       });
       return true;
     });
+    if (responseClosed(res)) return;
     if (!changed) return sendError(res, 409, "STATE_CHANGED", "La cuenta cambió.");
     const user = await database.user.findUniqueOrThrow({ where: { id } });
+    if (responseClosed(res)) return;
     res.setHeader("Cache-Control", "no-store");
     return sendData(res, { user: publicUser(user), temporaryPassword });
+  });
+
+  app.get("/internal/v1/auth/ready", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const bearer = req.get("Authorization") ?? "";
+    const credential = bearer.startsWith("Bearer ") ? bearer.slice(7) : "";
+    if (!serviceTokens.some((expected) => equalsSecret(credential, expected))) {
+      return sendError(res, 401, "UNAUTHENTICATED", "Credencial interna inválida.");
+    }
+    if (!options.checkReadiness || !(await options.checkReadiness())) {
+      return sendError(res, 503, "SERVICE_UNAVAILABLE", "Servicio no disponible temporalmente.");
+    }
+    return sendData(res, { status: "ready" });
   });
 
   app.post("/internal/v1/sessions/introspect", async (req, res) => {
@@ -472,6 +524,7 @@ export function createAuthApp(options: Options) {
   });
 
   app.use((error: unknown, _req: Request, res: Response, _next: express.NextFunction) => {
+    if (responseClosed(res)) return;
     // Never write request bodies, cookies or bearer credentials into logs.
     if (error instanceof SyntaxError || (error instanceof Error && error.name === "PayloadTooLargeError")) {
       return sendError(res, 422, "INVALID_INPUT", "Solicitud JSON inválida.");

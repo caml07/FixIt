@@ -24,6 +24,30 @@ BD externas. `CONTAINER_ENGINE=docker` permite seleccionar Docker.
 `node scripts/ci/check-apps.mjs` reproduce la CI de aplicaciones (incluye
 audit de dependencias de produccion).
 
+Para ensayar la recuperacion de la base, ejecutar `check-auth.sh` con
+`FIXIT_AUTH_RECOVERY_TEST=1`. La prueba pausa y reanuda exclusivamente su
+contenedor PostgreSQL temporal y verifica el proceso HTTP de Auth con una
+sesion de prueba. En Windows puede ejecutarse con Git Bash y Docker.
+En el ensayo local, una solicitud autenticada supero el plazo de 3 segundos
+del cliente mientras PostgreSQL estaba pausado; despues de reanudarlo, Auth
+volvio a responder. `/health` siguio en 200 porque solo indica que el proceso
+esta vivo. El endpoint interno `GET /internal/v1/auth/ready` acepta el bearer
+de Tickets o Chat y comprueba con una conexion separada y de solo lectura, en
+un plazo de tres segundos, que Auth puede consultar usuarios y sesiones.
+Devuelve 200 o 503, no se publica por el proxy y no comprueba el pool principal
+ni garantiza solicitudes posteriores. Las solicitudes ordinarias tienen un
+plazo de respuesta de cinco segundos: si vence, Auth intenta responder 503 con
+resultado incierto. Los plazos dependen del event loop y la red, y no cancelan
+una consulta o transaccion en curso. Un proxy debe permitir tiempo suficiente
+para recibir esa respuesta. Si se pierde una respuesta de escritura, seguir el
+procedimiento de reconciliacion de [G1](../../docs/010.G1-Contracts.md), sin
+reintentos automaticos ni suponer rollback.
+Un experimento separado con el `query_timeout` del controlador `pg` confirmo
+que una escritura enviada durante la pausa puede completarse tras informarse
+el timeout. Por eso no se configura ese limite global como si cancelara la
+operacion. Es necesario disenar y probar el manejo de resultados inciertos,
+incluida la reconciliacion antes de reintentar operaciones de cuentas.
+
 La prueba opcional `browser-https.integration.test.mjs` usa Chrome y OpenSSL
 locales, un proxy HTTPS y un perfil de navegador temporales. Una pagina de prueba
 verifica activacion, rechazo sin CSRF, cierre de sesion provisional, nuevo login
@@ -79,7 +103,7 @@ instaladas; no se ha preparado como probe de imagen de produccion.
    `sh scripts/ci/check-auth.sh`; requiere Git Bash y Docker. La prueba usa
    una base desechable y captura la contrasena dentro del proceso, sin imprimirla.
 4. El proxy HTTPS dirige `/api/v1/auth/*` y `/api/v1/admin/*` a Auth; **no**
-   debe publicar `/internal/v1/sessions/introspect`. Usar mismo origen para
+  debe publicar ninguna ruta `/internal/v1/*`. Usar mismo origen para
    el navegador y `X-CSRF-Token` en mutaciones. Tickets y Chat usan sus
    credenciales internas por red privada, no desde React.
 
@@ -117,6 +141,12 @@ instaladas; no se ha preparado como probe de imagen de produccion.
   esta vacio, no contiene ninguna entrada compatible con la politica de
   longitud de FixIt o no es UTF-8 valido. Se preservan los espacios que forman
   parte de cada entrada. Esto por si solo no certifica cumplimiento de NIST.
+  La lista NCSC de 100 000 contrasenas difundidas corresponde a un analisis de
+  [2019](https://www.ncsc.gov.uk/sites/default/files/documents/NCSC_Annual%20Review_2019%20FINAL%20double%20pages%20V2.pdf)
+  y no se ha seleccionado como corpus definitivo. [Pwned Passwords](https://haveibeenpwned.com/Passwords)
+  permite descargar hashes para consulta local, pero el cargador actual espera
+  texto UTF-8, no hashes: no se puede usar directamente esa descarga. Quedan
+  pendientes la seleccion y validacion de fuente, formato, actualizacion y capacidad.
 - Los valores de timeout y Argon2id son defaults de desarrollo pendientes de
   calibracion. Falta verificar seguridad concurrente, browser/proxy HTTPS,
   readiness real, integracion Tickets/Chat y despliegue. No declarar G4 PASS.
