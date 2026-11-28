@@ -2,8 +2,8 @@
   "openapi": "3.1.1",
   "info": {
     "title": "FixIt API — Contract-First",
-    "version": "0.3.0",
-    "description": "Contrato 0.3.0: comprobacion CSRF en introspeccion aprobada por el propietario; revision tecnica del equipo y G1 pendientes. La baseline 0.2.0 fue congelada el 26-11-2026. Este cambio no modifica Prisma, SQL ni Socket.IO. El proxy solo publica /api/v1 y /health; /internal/v1 es exclusivo de la red interna. Autenticacion por cookie opaca, mutaciones con CSRF y comprobacion de Origin, autorizacion de recursos en Tickets."
+    "version": "0.4.0",
+    "description": "Contrato 0.4.0: readiness interna de Auth y resultados inciertos aprobados por el propietario; revision tecnica del equipo y G1 pendientes. Contrato 0.3.0 de CSRF aprobado anteriormente. Sin cambio de Prisma, SQL ni Socket.IO. El proxy solo publica /api/v1 y /health; /internal/v1 es exclusivo de la red interna."
   },
   "servers": [
     {
@@ -88,6 +88,31 @@
             }
           }
         }
+      }
+    },
+    "/internal/v1/auth/ready": {
+      "get": {
+        "tags": ["Internal"],
+        "summary": "Comprobar disponibilidad interna de Auth y PostgreSQL",
+        "description": "Acceso exclusivo a red interna con bearer de Tickets o Chat; no publicar por proxy. La respuesta indica si el proceso Auth pudo completar, dentro de 3 segundos, una consulta de solo lectura a usuarios y sesiones con el rol de Auth. No garantiza que el pool principal ni las proximas operaciones esten disponibles. No almacenar respuestas ni revelar detalles de base, credenciales o errores internos. /health sigue siendo liveness.",
+        "operationId": "get__internal_v1_auth_ready",
+        "security": [{ "serviceBearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Auth responde y la consulta de prueba a PostgreSQL termino dentro del plazo",
+            "content": { "application/json": { "schema": {
+              "type": "object", "additionalProperties": false,
+              "properties": {
+                "data": { "type": "object", "additionalProperties": false, "properties": { "status": { "type": "string", "const": "ready" } }, "required": ["status"] },
+                "requestId": { "type": "string", "format": "uuid" }
+              },
+              "required": ["data", "requestId"]
+            } } }
+          },
+          "401": { "description": "Credencial interna invalida", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } },
+          "503": { "description": "La consulta fallo o no termino dentro del plazo", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+        },
+        "x-internal": true
       }
     },
     "/api/v1/auth/login": {
