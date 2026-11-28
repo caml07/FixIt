@@ -26,6 +26,7 @@ type Options = {
   csrfKey: string;
   serviceTokens: readonly [string, string];
   checkReadiness?: () => Promise<boolean>;
+  rateLimits?: { login: number; admin: number; activation: number };
   passwordBlocklist?: ReadonlySet<string>;
   sessionTimeouts?: { full: number; idle: number; temporary: number };
 };
@@ -102,15 +103,15 @@ export function createAuthApp(options: Options) {
   app.use(express.json({ limit: "16kb" }));
 
   const loginLimiter = rateLimit({
-    windowMs: 15 * 60_000, limit: 20, standardHeaders: "draft-8", legacyHeaders: false,
+    windowMs: 15 * 60_000, limit: options.rateLimits?.login ?? 20, standardHeaders: "draft-8", legacyHeaders: false,
     handler: (_req, res) => sendError(res, 429, "RATE_LIMITED", "Demasiados intentos."),
   });
   const adminLimiter = rateLimit({
-    windowMs: 15 * 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false,
+    windowMs: 15 * 60_000, limit: options.rateLimits?.admin ?? 60, standardHeaders: "draft-8", legacyHeaders: false,
     handler: (_req, res) => sendError(res, 429, "RATE_LIMITED", "Demasiadas operaciones."),
   });
   const activationLimiter = rateLimit({
-    windowMs: 15 * 60_000, limit: 20, standardHeaders: "draft-8", legacyHeaders: false,
+    windowMs: 15 * 60_000, limit: options.rateLimits?.activation ?? 20, standardHeaders: "draft-8", legacyHeaders: false,
     keyGenerator: (_req, res) => String(res.locals.activationSession.user.id),
     handler: (_req, res) => sendError(res, 429, "RATE_LIMITED", "Demasiados intentos."),
   });

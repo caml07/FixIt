@@ -19,7 +19,10 @@ npm run build
 `npm test` crea y elimina un contenedor PostgreSQL 17 propio, con puerto
 aleatorio en 127.0.0.1, datos temporales y secretos sinteticos. Ejecuta la
 migracion y la suite Auth con un rol de runtime restringido; no usa URLs de
-BD externas. `CONTAINER_ENGINE=docker` permite seleccionar Docker.
+BD externas. Tambien inicia el proceso real `server.ts` y verifica que su
+readiness interna rechaza solicitudes sin credencial y responde con la
+credencial de servicio y PostgreSQL disponible. `CONTAINER_ENGINE=docker`
+permite seleccionar Docker.
 `npm run test:auth:security` ejecuta solo las pruebas unitarias sin BD.
 `node scripts/ci/check-apps.mjs` reproduce la CI de aplicaciones (incluye
 audit de dependencias de produccion).
@@ -83,6 +86,9 @@ instaladas; no se ha preparado como probe de imagen de produccion.
 | `AUTH_CSRF_KEY` | Secreto aleatorio independiente de al menos 32 caracteres |
 | `AUTH_TICKETS_SERVICE_TOKEN` | Credencial interna distinta para Tickets |
 | `AUTH_CHAT_SERVICE_TOKEN` | Credencial interna distinta para Chat |
+| `AUTH_LOGIN_RATE_LIMIT` | Limite de login por IP directa cada 15 min; default y maximo 20 |
+| `AUTH_ADMIN_RATE_LIMIT` | Limite de rutas Admin por IP directa cada 15 min; default y maximo 60 |
+| `AUTH_ACTIVATION_RATE_LIMIT` | Limite de activacion por cuenta cada 15 min; default y maximo 20 |
 | `AUTH_PORT` | Puerto; por defecto 3001 |
 | `AUTH_BIND_HOST` | Por defecto 127.0.0.1; no exponer directamente a Internet |
 | `AUTH_FULL_SESSION_SECONDS` | Duracion absoluta, por defecto 28800 (8 h) |
@@ -134,6 +140,15 @@ instaladas; no se ha preparado como probe de imagen de produccion.
   comportamiento con solicitudes reales; no habilitar confianza universal en
   cabeceras reenviadas. La suite local comprueba el rechazo del spoofing, no
   valida una topologia de despliegue ni limitacion distribuida.
+  Las tres variables opcionales permiten reducir los limites existentes; valores
+  invalidos, cero o superiores al maximo hacen fallar el arranque. La ventana
+  de 15 minutos permanece fija y las cuotas Admin tambien usan la IP directa.
+  No configurar `trust proxy` ni confiar en `CF-Connecting-IP` o
+  `X-Forwarded-For` hasta identificar cada salto, restringir acceso directo y
+  verificar que el ultimo proxy confiable sobrescribe las cabeceras. La
+  [guia oficial de Express](https://expressjs.com/en/guide/behind-proxies/)
+  explica por que la configuracion debe coincidir con la topologia real. Las
+  variables no convierten el almacenamiento en memoria en un limite compartido.
 - La blocklist incorporada es solo un minimo de desarrollo. Para produccion,
   provisionar un corpus local revisado de contrasenas comunes/comprometidas,
   con licencia y procedencia documentadas; no enviar contrasenas del usuario

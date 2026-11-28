@@ -15,6 +15,8 @@ const app = createAuthApp({
   csrfKey: config.AUTH_CSRF_KEY,
   serviceTokens: [config.AUTH_TICKETS_SERVICE_TOKEN, config.AUTH_CHAT_SERVICE_TOKEN],
   checkReadiness: createReadinessProbe(config.AUTH_DATABASE_URL),
+  rateLimits: { login: config.AUTH_LOGIN_RATE_LIMIT, admin: config.AUTH_ADMIN_RATE_LIMIT,
+    activation: config.AUTH_ACTIVATION_RATE_LIMIT },
   passwordBlocklist,
   sessionTimeouts: { full: config.AUTH_FULL_SESSION_SECONDS, idle: config.AUTH_IDLE_SESSION_SECONDS, temporary: config.AUTH_TEMPORARY_SESSION_SECONDS },
 });

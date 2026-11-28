@@ -33,6 +33,38 @@ test("Auth accepts only the exact HTTPS origin used by browsers", () => {
   }
 });
 
+test("rate limits default safely and reject values above the approved maximum", () => {
+  const values = {
+    AUTH_DATABASE_URL: "postgresql://localhost/fixit", AUTH_CSRF_KEY: randomUUID(),
+    AUTH_TICKETS_SERVICE_TOKEN: randomUUID(), AUTH_CHAT_SERVICE_TOKEN: randomUUID(),
+    AUTH_PUBLIC_ORIGIN: "https://fixit.example.invalid",
+  };
+  const keys = [...Object.keys(values), "AUTH_LOGIN_RATE_LIMIT", "AUTH_ADMIN_RATE_LIMIT", "AUTH_ACTIVATION_RATE_LIMIT"];
+  const original = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  Object.assign(process.env, values);
+  for (const key of keys.slice(-3)) delete process.env[key];
+  try {
+    const defaults = readAuthConfig();
+    assert.equal(defaults.AUTH_LOGIN_RATE_LIMIT, 20);
+    assert.equal(defaults.AUTH_ADMIN_RATE_LIMIT, 60);
+    assert.equal(defaults.AUTH_ACTIVATION_RATE_LIMIT, 20);
+    Object.assign(process.env, { AUTH_LOGIN_RATE_LIMIT: "2", AUTH_ADMIN_RATE_LIMIT: "3", AUTH_ACTIVATION_RATE_LIMIT: "4" });
+    const stricter = readAuthConfig();
+    assert.equal(stricter.AUTH_LOGIN_RATE_LIMIT, 2);
+    assert.equal(stricter.AUTH_ADMIN_RATE_LIMIT, 3);
+    assert.equal(stricter.AUTH_ACTIVATION_RATE_LIMIT, 4);
+    for (const bad of ["0", "-1", "21", "2.5", "abc"]) {
+      process.env.AUTH_LOGIN_RATE_LIMIT = bad;
+      assert.throws(() => readAuthConfig(), undefined, bad);
+    }
+  } finally {
+    for (const key of keys) {
+      if (original[key] === undefined) delete process.env[key];
+      else process.env[key] = original[key];
+    }
+  }
+});
+
 test("production password blocklist fails closed and preserves complete Unicode entries", async () => {
   const directory = await mkdtemp(join(tmpdir(), "fixit-blocklist-"));
   const path = join(directory, "list.txt");
