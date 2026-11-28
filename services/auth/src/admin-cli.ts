@@ -4,18 +4,20 @@ import { z } from "zod";
 import { openAuthDatabase } from "./db.ts";
 import { expiresAtHours, newSecret, TEMPORARY_PASSWORD_HOURS } from "./security.ts";
 
+class MaintenanceError extends Error {}
+
 async function run() {
   const [command, value] = process.argv.slice(2);
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    throw new Error("CLI requires a private interactive TTY; do not redirect output.");
+    throw new MaintenanceError("CLI requires a private interactive TTY; do not redirect output.");
   }
   if (command !== "bootstrap" && command !== "reset-admin") {
-    throw new Error("Usage: admin-cli bootstrap <email> | admin-cli reset-admin");
+    throw new MaintenanceError("Usage: admin-cli bootstrap <email> | admin-cli reset-admin");
   }
   if (command === "bootstrap" && !z.email().safeParse(value).success) {
-    throw new Error("A valid initial Admin email is required.");
+    throw new MaintenanceError("A valid initial Admin email is required.");
   }
-  if (!process.env.AUTH_DATABASE_URL) throw new Error("AUTH_DATABASE_URL missing.");
+  if (!process.env.AUTH_DATABASE_URL) throw new MaintenanceError("AUTH_DATABASE_URL missing.");
   const db = openAuthDatabase(process.env.AUTH_DATABASE_URL);
   try {
     const temporaryPassword = newSecret();
@@ -27,7 +29,7 @@ async function run() {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(629417)`;
       const admins = await tx.user.findMany({ where: { role: "ADMIN" }, take: 2 });
       if (command === "bootstrap") {
-        if (admins.length) throw new Error("Admin already provisioned. Use reset-admin.");
+        if (admins.length) throw new MaintenanceError("Admin already provisioned. Use reset-admin.");
         const admin = await tx.user.create({
           data: {
             email: value!.toLowerCase(), displayName: "FixIt Administrator", role: "ADMIN",
@@ -37,7 +39,7 @@ async function run() {
         });
         await tx.accountAudit.create({ data: { subjectUserId: admin.id, action: "BOOTSTRAPPED" } });
       } else {
-        if (admins.length !== 1) throw new Error("Expected exactly one Admin account.");
+        if (admins.length !== 1) throw new MaintenanceError("Expected exactly one Admin account.");
         const existing = admins[0];
         await tx.user.update({
           where: { id: existing.id },
@@ -62,6 +64,6 @@ async function run() {
 }
 
 run().catch((error: unknown) => {
-  console.error("Admin maintenance aborted:", error instanceof Error ? error.message : "unknown");
+  console.error("Admin maintenance aborted:", error instanceof MaintenanceError ? error.message : "database or maintenance error");
   process.exitCode = 1;
 });

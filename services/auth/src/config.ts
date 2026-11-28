@@ -5,7 +5,11 @@ import { cleanPassword, FULL_SECONDS, IDLE_SECONDS, TEMPORARY_SECONDS } from "./
 
 const schema = z.object({
   AUTH_DATABASE_URL: z.string().min(1),
-  AUTH_PUBLIC_ORIGIN: z.url(),
+  AUTH_PUBLIC_ORIGIN: z.url().refine((value) => {
+    if (!URL.canParse(value)) return false;
+    const origin = new URL(value);
+    return origin.protocol === "https:" && origin.origin === value;
+  }),
   AUTH_CSRF_KEY: z.string().min(32),
   AUTH_TICKETS_SERVICE_TOKEN: z.string().min(32),
   AUTH_CHAT_SERVICE_TOKEN: z.string().min(32),
@@ -31,7 +35,15 @@ export function readPasswordBlocklist(path: string | undefined): ReadonlySet<str
     if (process.env.NODE_ENV === "production") throw new Error("AUTH_PASSWORD_BLOCKLIST_FILE required in production.");
     return new Set();
   }
-  const entries = new Set(readFileSync(path, "utf8").split(/\r?\n/).filter(Boolean).map((entry) => cleanPassword(entry).toLowerCase()));
-  if (entries.size === 0) throw new Error("Password blocklist is empty.");
+  const contents = new TextDecoder("utf-8", { fatal: true }).decode(readFileSync(path));
+  const entries = new Set(contents.split(/\r?\n/).filter(Boolean).map((entry) => cleanPassword(entry).toLowerCase()));
+  let hasUsableEntry = false;
+  for (const entry of entries) {
+    if (entry.trim().length > 0 && Array.from(entry).length >= 15 && Buffer.byteLength(entry, "utf8") <= 1024) {
+      hasUsableEntry = true;
+      break;
+    }
+  }
+  if (!hasUsableEntry) throw new Error("Password blocklist is empty.");
   return entries;
 }

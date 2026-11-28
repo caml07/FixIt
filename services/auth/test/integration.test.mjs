@@ -50,6 +50,7 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
   const app = createAuthApp({
     database, publicOrigin: origin,
     csrfKey, serviceTokens: [serviceTokenA, serviceTokenB],
+    passwordBlocklist: new Set(["blocked integration password"]),
   });
   const server = createServer(app);
   server.listen(0, "127.0.0.1");
@@ -165,6 +166,12 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     }
     const temporaryCsrf = await csrf(temporaryCookie);
     assert.equal((await request("/api/v1/admin/users", { cookie: temporaryCookie })).response.status, 403);
+    const blockedPassword = await request("/api/v1/auth/password/activate", {
+      method: "POST", cookie: temporaryCookie, csrf: temporaryCsrf,
+      body: { currentPassword: firstTemporary, newPassword: "blocked integration password" },
+    });
+    assert.equal(blockedPassword.response.status, 422);
+    assert.equal(blockedPassword.data.error.code, "WEAK_PASSWORD");
     const newTeacherPassword = randomBytes(32).toString("base64url");
     const activation = await request("/api/v1/auth/password/activate", {
       method: "POST", cookie: temporaryCookie, csrf: temporaryCsrf,
@@ -179,6 +186,18 @@ test("G4 Auth: real PostgreSQL sessions, CSRF, Admin lifecycle and revocation", 
     assert(teacherLogin.cookie);
     const teacherCookie = teacherLogin.cookie;
     const teacherToken = teacherCookie.split("=")[1];
+    const teacherSessionCsrf = await csrf(teacherCookie);
+    assert.equal((await request("/api/v1/admin/users", { cookie: teacherCookie })).response.status, 403);
+    assert.equal((await request(`/api/v1/admin/users/${teacherId}/disable`, {
+      method: "POST", cookie: teacherCookie, csrf: teacherSessionCsrf,
+    })).response.status, 403);
+    assert.equal((await request(`/api/v1/admin/users/${teacherId}/reset-password`, {
+      method: "POST", cookie: teacherCookie, csrf: teacherSessionCsrf,
+    })).response.status, 403);
+    assert.equal((await request(`/api/v1/admin/users/${teacherId}/disable`, {
+      method: "POST", cookie: adminCookie, csrf: teacherSessionCsrf,
+    })).response.status, 403);
+    assert.equal((await request("/api/v1/auth/me", { cookie: teacherCookie })).response.status, 200);
 
     const introspection = await request("/internal/v1/sessions/introspect", {
       method: "POST", requestOrigin: null, bearer: serviceTokenA,

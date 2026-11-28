@@ -28,4 +28,9 @@ npm run db:migrate
 CREATE ROLE fixit_ci_auth LOGIN PASSWORD '$runtime_password';
 GRANT fixit_auth_runtime TO fixit_ci_auth;
 SQL
-FIXIT_TEST_DB_URL="postgresql://fixit_ci_auth:$runtime_password@127.0.0.1:$port/postgres" npm run test:auth
+export FIXIT_TEST_DB_URL="postgresql://fixit_ci_auth:$runtime_password@127.0.0.1:$port/postgres"
+if [ "${FIXIT_AUTH_TTY_TEST:-0}" = 1 ]; then
+  node --import tsx services/auth/test/admin-cli-tty.integration.test.mjs
+else
+  npm run test:auth
+fi

@@ -24,6 +24,15 @@ BD externas. `CONTAINER_ENGINE=docker` permite seleccionar Docker.
 `node scripts/ci/check-apps.mjs` reproduce la CI de aplicaciones (incluye
 audit de dependencias de produccion).
 
+La prueba opcional `browser-https.integration.test.mjs` usa Chrome y OpenSSL
+locales, un proxy HTTPS y un perfil de navegador temporales. Una pagina de prueba
+verifica activacion, rechazo sin CSRF, cierre de sesion provisional, nuevo login
+y logout; no prueba las pantallas React ni el proxy definitivo. Para incluirla en
+`npm test`, configurar `FIXIT_BROWSER_PATH` y `FIXIT_OPENSSL_PATH` con las rutas
+de sus ejecutables. Sin ambas variables se omite; no se considera aprobada por
+una suite que la haya omitido. El certificado local autofirmado solo se acepta
+en ese navegador de prueba y no configura la confianza del sistema.
+
 `npm run auth:check-db` verifica que `AUTH_DATABASE_URL` pueda conectar y
 consultar las tablas de usuarios y sesiones de Auth. Devuelve codigo 0 cuando
 la comprobacion pasa y 1 ante error, sin mostrar la URL ni credenciales. Usa
@@ -46,7 +55,7 @@ instaladas; no se ha preparado como probe de imagen de produccion.
 | Variable | Uso |
 | --- | --- |
 | `AUTH_DATABASE_URL` | URL del LOGIN restringido de Auth (no del owner) |
-| `AUTH_PUBLIC_ORIGIN` | Origen HTTPS exacto del proxy/UI, sin slash final |
+| `AUTH_PUBLIC_ORIGIN` | Origen HTTPS exacto del proxy/UI, sin slash final ni ruta; Auth rechaza HTTP y URLs que no sean un origen canonico |
 | `AUTH_CSRF_KEY` | Secreto aleatorio independiente de al menos 32 caracteres |
 | `AUTH_TICKETS_SERVICE_TOKEN` | Credencial interna distinta para Tickets |
 | `AUTH_CHAT_SERVICE_TOKEN` | Credencial interna distinta para Chat |
@@ -60,7 +69,15 @@ instaladas; no se ha preparado como probe de imagen de produccion.
 3. Ejecutar `npm run db:generate` y `npm run auth:start`. El primer Admin se
    crea una sola vez desde una terminal privada con `npm run auth:bootstrap -- admin@invalid.example`.
    Para recuperarlo usar `npm run auth:reset-admin` en esa terminal. Nunca
-   ejecutar la CLI en CI, con salida redirigida ni en logs de contenedor.
+   ejecutar la CLI en CI, con salida redirigida ni en logs de contenedor. La
+   CLI rechaza antes de modificar la base cuando no hay terminal interactiva;
+   los errores inesperados no muestran detalles de conexion ni de la base.
+   La prueba interactiva aislada verifica bootstrap unico, contrasenas
+   temporales, recuperacion de la misma cuenta, revocacion y auditoria. En
+   Windows se ejecuta en terminal con `FIXIT_AUTH_TTY_TEST=1` y
+   `FIXIT_WINPTY_PATH` apuntando a `winpty.exe`, mediante
+   `sh scripts/ci/check-auth.sh`; requiere Git Bash y Docker. La prueba usa
+   una base desechable y captura la contrasena dentro del proceso, sin imprimirla.
 4. El proxy HTTPS dirige `/api/v1/auth/*` y `/api/v1/admin/*` a Auth; **no**
    debe publicar `/internal/v1/sessions/introspect`. Usar mismo origen para
    el navegador y `X-CSRF-Token` en mutaciones. Tickets y Chat usan sus
@@ -97,7 +114,9 @@ instaladas; no se ha preparado como probe de imagen de produccion.
   provisionar un corpus local revisado de contrasenas comunes/comprometidas,
   con licencia y procedencia documentadas; no enviar contrasenas del usuario
   a servicios externos. La carga falla si falta el archivo en produccion o
-  esta vacio. Esto por si solo no certifica cumplimiento de NIST.
+  esta vacio, no contiene ninguna entrada compatible con la politica de
+  longitud de FixIt o no es UTF-8 valido. Se preservan los espacios que forman
+  parte de cada entrada. Esto por si solo no certifica cumplimiento de NIST.
 - Los valores de timeout y Argon2id son defaults de desarrollo pendientes de
   calibracion. Falta verificar seguridad concurrente, browser/proxy HTTPS,
   readiness real, integracion Tickets/Chat y despliegue. No declarar G4 PASS.
