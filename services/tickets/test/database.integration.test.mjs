@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { setTimeout as delay } from "node:timers/promises";
 import pg from "pg";
 import { createDatabase, cleanup } from "./fixtures/postgres17.mjs";
 import { openTicketsDatabase } from "../dist/database.js";
@@ -13,6 +14,7 @@ test("migrations and isolated runtime permissions", { timeout: 120000 }, async (
   });
   let owner;
   let runtime;
+  let admin;
   try {
     migrate();
     assert.match(migrate(), /No pending migrations/i);
@@ -33,9 +35,19 @@ test("migrations and isolated runtime permissions", { timeout: 120000 }, async (
     for (const table of ["users", "sessions", "account_audit"]) {
       await assert.rejects(runtime.query(`SELECT * FROM auth.${table} LIMIT 1`), { code: "42501" });
     }
+    admin = new pg.Client({ connectionString: fixture.adminUrl });
+    await admin.connect();
+    const { rows: [{ pid }] } = await runtime.query("SELECT pg_backend_pid() AS pid");
+    const removed = new Promise((resolve) => runtime.once("remove", resolve));
+    assert.equal((await admin.query("SELECT pg_terminate_backend($1, 1000) AS stopped", [pid])).rows[0].stopped, true);
+    await Promise.race([removed, delay(4000, undefined, { ref: false }).then(() => assert.fail("Pool retained the terminated client"))]);
+    assert.notEqual((await runtime.query("SELECT pg_backend_pid() AS pid")).rows[0].pid, pid);
+    await assert.rejects(runtime.query("SELECT pg_sleep(10)"), { code: "57014" });
+    assert.equal((await runtime.query("SELECT 1 AS ready")).rows[0].ready, 1);
   } finally {
     await runtime?.end();
     await owner?.end();
+    await admin?.end();
     await cleanup();
   }
 });

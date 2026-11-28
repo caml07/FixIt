@@ -1,6 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
+import { checkoutTicketsDatabase } from "./database.js";
 import { authenticate } from "./auth.js";
 import { mutationRoutes } from "./mutations.js";
 import { internalRoutes } from "./internal.js";
@@ -72,7 +73,7 @@ export function createApp(isDraining: () => boolean = () => false, dependencies?
         ("equipment" in body && (typeof body.equipment !== "string" || Array.from(body.equipment).length > 160))) {
       return error(422, "VALIDATION_ERROR", "Invalid ticket.");
     }
-    const client = await dependencies.database.connect().catch(() => null);
+    const client = await checkoutTicketsDatabase(dependencies.database).catch(() => null);
     if (!client) return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
     try {
       await client.query("BEGIN");
@@ -100,7 +101,8 @@ export function createApp(isDraining: () => boolean = () => false, dependencies?
       await client.query("COMMIT");
       return res.status(201).json({ data: { ...ticket, attachments: [] }, requestId });
     } catch {
-      await client.query("ROLLBACK").catch(() => {});
+      await client.rollback();
+      if (res.destroyed || res.writableEnded || res.headersSent) return;
       return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
     } finally {
       client.release();

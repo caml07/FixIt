@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { addAbortListener } from "node:events";
 import { pipeline } from "node:stream/promises";
 import { Router } from "express";
 import type { AppDependencies } from "./app.js";
@@ -6,6 +7,16 @@ import { attachmentKey } from "./attachment-storage.js";
 import { readAttachmentUpload } from "./attachment-upload.js";
 import { attachmentTypes, videoLimit, type AttachmentType } from "./attachment-media.js";
 import { authenticate } from "./auth.js";
+import { checkoutTicketsDatabase, isDatabaseRejection } from "./database.js";
+
+const storageTimeoutMs = 3000;
+
+function waitForStorage(operation: Promise<void>, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const listener = addAbortListener(signal, () => reject(signal.reason));
+    void operation.then(resolve, reject).finally(() => listener[Symbol.dispose]());
+  });
+}
 
 const extensions: Record<AttachmentType, string> = {
   "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "video/mp4": "mp4"
@@ -27,7 +38,11 @@ export function attachmentRoutes(dependencies?: AppDependencies) {
       if (!req.complete) res.set("Connection", "close");
       return res.status(status).json({ error: { code, message }, requestId });
     };
-    const unavailable = () => error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
+    const unavailable = () => {
+      if (!res.destroyed && !res.writableEnded && !res.headersSent) {
+        return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
+      }
+    };
     const cookie = req.get("cookie");
     if (!cookie) return error(401, "UNAUTHENTICATED", "Session is invalid.");
     if (!dependencies) return unavailable();
@@ -50,6 +65,7 @@ export function attachmentRoutes(dependencies?: AppDependencies) {
       return error(429, "RATE_LIMITED", "Too many uploads in progress.");
     }
     pendingUploads++;
+    let lateCleanup: Promise<void> | undefined;
     try {
       const upload = await readAttachmentUpload(req);
       if (upload.status !== 200) {
@@ -58,12 +74,24 @@ export function attachmentRoutes(dependencies?: AppDependencies) {
       }
       if (res.destroyed) return;
       const checksum = createHash("sha256").update(upload.bytes).digest("hex");
-      const client = await dependencies.database.connect();
       const key = randomUUID();
+      const client = await checkoutTicketsDatabase(dependencies.database);
       let transaction = false;
-      let discard = false;
       let stored = false;
       let commitAttempted = false;
+      let compensate = false;
+      const removeStored = async () => {
+        try {
+          await waitForStorage(storage.remove(key), AbortSignal.timeout(storageTimeoutMs));
+        } catch {
+          console.error("Attachment cleanup requires reconciliation", { requestId, key });
+        }
+      };
+      function reportPartial(failure: unknown) {
+        if (failure instanceof AggregateError) {
+          console.error("Incomplete attachment requires reconciliation", { requestId, key });
+        }
+      }
       try {
         await client.query("BEGIN");
         transaction = true;
@@ -84,7 +112,19 @@ export function attachmentRoutes(dependencies?: AppDependencies) {
           return error(409, "CONFLICT", "Attachment count limit reached.");
         }
         if (quota.bytes + upload.bytes.length > 2 * videoLimit) return error(413, ...uploadErrors[413]);
-        await storage.put(key, upload.bytes);
+        const signal = AbortSignal.any([client.signal, AbortSignal.timeout(storageTimeoutMs)]);
+        signal.throwIfAborted();
+        const write = storage.put(key, upload.bytes);
+        try {
+          await waitForStorage(write, signal);
+        } catch (failure) {
+          if (signal.aborted) {
+            // The write can finish after the request. Only remove a file this write successfully created.
+            console.warn("Attachment write interrupted; cleanup deferred", { requestId, key });
+            lateCleanup = write.then(removeStored, reportPartial);
+          }
+          throw failure;
+        }
         stored = true;
         await client.query(`INSERT INTO tickets.ticket_attachments
           (ticket_id, uploaded_by, storage_key, content_type, size_bytes, sha256_hex)
@@ -105,31 +145,23 @@ export function attachmentRoutes(dependencies?: AppDependencies) {
         transaction = false;
         return res.status(201).json({ data: { ...updated.rows[0], attachments: attachments.rows }, requestId });
       } catch (failure) {
-        if (commitAttempted && !(failure instanceof Error && "severity" in failure && failure.severity === "ERROR")) {
-          discard = true;
+        if (transaction && commitAttempted && !isDatabaseRejection(failure)) {
           console.error("Attachment commit outcome requires reconciliation", { requestId, key });
         } else {
-          if (transaction) {
-            await client.query("ROLLBACK").catch(() => { discard = true; });
-            transaction = false;
-          }
-          if (stored) {
-            await storage.remove(key).catch(() => {
-              console.error("Attachment cleanup requires reconciliation", { requestId, key });
-            });
-          } else if (failure instanceof AggregateError) {
-            console.error("Incomplete attachment requires reconciliation", { requestId, key });
-          }
+          compensate = transaction && stored;
+          if (!lateCleanup) reportPartial(failure);
         }
-        return unavailable();
       } finally {
-        if (transaction && !discard) await client.query("ROLLBACK").catch(() => { discard = true; });
-        client.release(discard);
+        if (transaction) await client.rollback();
+        client.release();
       }
+      if (compensate) await removeStored();
+      return unavailable();
     } catch {
       return unavailable();
     } finally {
-      pendingUploads--;
+      if (lateCleanup) void lateCleanup.finally(() => { pendingUploads--; });
+      else pendingUploads--;
     }
   });
 

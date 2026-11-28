@@ -3,6 +3,7 @@ import express from "express";
 import { randomUUID } from "node:crypto";
 import type { AppDependencies } from "./app.js";
 import { authenticate } from "./auth.js";
+import { checkoutTicketsDatabase } from "./database.js";
 
 type Action = "edit" | "claim" | "status" | "priority" | "assignee";
 type Body = Record<string, unknown>;
@@ -92,9 +93,8 @@ export function mutationRoutes(dependencies?: AppDependencies) {
         return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
       }
     }
-    const client = await dependencies.database.connect().catch(() => null);
+    const client = await checkoutTicketsDatabase(dependencies.database).catch(() => null);
     if (!client) return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
-    let discard = false;
     try {
       await client.query("BEGIN");
       const found = await client.query("SELECT * FROM tickets.support_tickets WHERE id = $1 FOR UPDATE", [ticketId]);
@@ -205,10 +205,11 @@ export function mutationRoutes(dependencies?: AppDependencies) {
       await client.query("COMMIT");
       return res.status(200).json({ data: { ...ticket, attachments: attachments.rows }, requestId });
     } catch {
-      await client.query("ROLLBACK").catch(() => { discard = true; });
+      await client.rollback();
+      if (res.destroyed || res.writableEnded || res.headersSent) return;
       return error(503, "DEPENDENCY_UNAVAILABLE", "Service unavailable.");
     } finally {
-      client.release(discard);
+      client.release();
     }
   }
   router.patch("/api/v1/tickets/:ticketId", express.json({ limit: "128kb" }), (req, res) => handle("edit", req, res));

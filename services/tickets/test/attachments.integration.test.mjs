@@ -68,13 +68,14 @@ test("private attachments enforce access, quotas, concurrency and compensation i
   let failedStorage = false;
   let failedRemoval = false;
   let pauseWrite;
+  const removedKeys = new Set();
   const attachmentStorage = {
     async put(key, bytes) {
       if (failedStorage) throw new Error("Synthetic write failure");
       if (pauseWrite) {
         const pause = pauseWrite;
         pauseWrite = undefined;
-        pause.enter.resolve();
+        pause.enter.resolve(key);
         await pause.exit.promise;
       }
       await storage.put(key, bytes);
@@ -83,6 +84,7 @@ test("private attachments enforce access, quotas, concurrency and compensation i
     async remove(key) {
       if (failedRemoval) throw new Error("Synthetic delete failure");
       await storage.remove(key);
+      removedKeys.add(key);
     }
   };
   execFileSync(process.execPath, ["node_modules/prisma/build/index.js", "migrate", "deploy", "--config", "prisma.config.ts"], {
@@ -218,6 +220,49 @@ test("private attachments enforce access, quotas, concurrency and compensation i
   const count = await owner.query("SELECT count(*)::int FROM tickets.ticket_attachments WHERE ticket_id = $1", [countTicket]);
   assert.equal(count.rows[0].count, 5);
 
+  for (const reason of ["database termination", "storage deadline"]) {
+    await t.test(`${reason} releases the upload lock and cleans up a late file`, async () => {
+      const interrupted = await makeTicket();
+      const pause = { enter: Promise.withResolvers(), exit: Promise.withResolvers() };
+      pauseWrite = pause;
+      const first = upload(interrupted, 1);
+      let key;
+      try {
+        key = await Promise.race([pause.enter.promise, first.then(() => assert.fail("Upload did not reach storage"))]);
+        if (reason === "database termination") {
+          const admin = new pg.Client({ connectionString: fixture.adminUrl });
+          await admin.connect();
+          try {
+            const result = await admin.query(`SELECT pg_terminate_backend(pid, 1000) AS stopped
+              FROM pg_stat_activity WHERE usename = 'tickets_runtime' AND state = 'idle in transaction'`);
+            assert.deepEqual(result.rows, [{ stopped: true }]);
+          } finally {
+            await admin.end();
+          }
+        }
+        const limit = reason === "database termination" ? 2000 : 4500;
+        const response = await Promise.race([first, delay(limit, undefined, { ref: false }).then(() => assert.fail("Upload waited for stalled storage"))]);
+        assert.equal(response.status, 503);
+        const failure = await response.json();
+        assert.equal(failure.error.code, "DEPENDENCY_UNAVAILABLE");
+        assert.match(failure.requestId, /^[\da-f-]{36}$/);
+        assert.equal((await owner.query("SELECT version FROM tickets.support_tickets WHERE id = $1", [interrupted])).rows[0].version, 1);
+        assert.equal((await owner.query("SELECT id FROM tickets.ticket_attachments WHERE ticket_id = $1", [interrupted])).rowCount, 0);
+        assert.equal((await upload(interrupted, 1)).status, 201);
+      } finally {
+        pause.exit.resolve();
+      }
+      for (let attempt = 0; attempt < 80; attempt++) {
+        if (removedKeys.has(key)) break;
+        await delay(25);
+      }
+      assert.ok(removedKeys.has(key));
+      assert.ok(!(await readdir(directory)).includes(key));
+      assert.equal((await owner.query("SELECT id FROM tickets.ticket_attachments WHERE ticket_id = $1", [interrupted])).rowCount, 1);
+      assert.equal((await owner.query("SELECT id FROM tickets.ticket_timeline WHERE ticket_id = $1", [interrupted])).rowCount, 1);
+    });
+  }
+
   const videoTicket = await makeTicket();
   const maxVideo = testVideo(25 * MiB);
   assert.equal((await upload(videoTicket, 1, { bytes: maxVideo, type: "video/mp4" })).status, 201);
@@ -227,7 +272,7 @@ test("private attachments enforce access, quotas, concurrency and compensation i
 
   const rollbackTicket = await makeTicket();
   const files = (await readdir(directory)).sort();
-  assert.equal(files.length, 8);
+  assert.equal(files.length, 10);
   failedStorage = true;
   assert.equal((await upload(rollbackTicket, 1)).status, 503);
   failedStorage = false;
