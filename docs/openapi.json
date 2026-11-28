@@ -2,8 +2,8 @@
   "openapi": "3.1.1",
   "info": {
     "title": "FixIt API — Contract-First",
-    "version": "0.4.0",
-    "description": "Contrato 0.4.0: readiness interna de Auth y resultados inciertos aprobados por el propietario; revision tecnica del equipo y G1 pendientes. Contrato 0.3.0 de CSRF aprobado anteriormente. Sin cambio de Prisma, SQL ni Socket.IO. El proxy solo publica /api/v1 y /health; /internal/v1 es exclusivo de la red interna."
+    "version": "0.5.0",
+    "description": "Contrato 0.5.0: respuesta 422 para paginacion invalida del timeline aprobada por el propietario; revision tecnica del equipo y G1 pendientes. Contrato 0.4.0 de readiness y resultados inciertos aprobado anteriormente. Sin cambio de Prisma, SQL ni Socket.IO. El proxy solo publica /api/v1 y /health; /internal/v1 es exclusivo de la red interna."
   },
   "servers": [
     {
@@ -2139,6 +2139,7 @@
           "Tickets"
         ],
         "summary": "Consultar timeline",
+        "description": "Cursor opaco o limit invalido recibe 422. Mantener autenticacion, autorizacion por ticket y proteccion contra divulgacion de recursos no visibles.",
         "operationId": "get__api_v1_tickets__ticketId__events",
         "parameters": [
           {
@@ -2243,6 +2244,16 @@
           },
           "404": {
             "description": "Recurso no encontrado/no visible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Paginacion invalida: cursor malformado o limit fuera de 1 a 100, no entero o repetido",
             "content": {
               "application/json": {
                 "schema": {
